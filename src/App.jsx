@@ -63,6 +63,8 @@ export default function App() {
   const [watchFilterGenre, setWatchFilterGenre] = useState("all"); // "all" or genre id (number)
   const [sortField, setSortField] = useState("dateAdded"); // title | rating | dateAdded | releaseDate
   const [sortAsc, setSortAsc] = useState(false);
+  const isWatched = (movieId) => { return watched.some(w => w.id === movieId); };
+
 
   // Carousel ref
   const carouselRef = useRef(null);
@@ -307,6 +309,7 @@ export default function App() {
                     key={m.id}
                     movie={m}
                     genresMap={genresMap}
+                    isWatched={isWatched(m.id)}
                     onMarkWatched={() => markWatched(m)}
                     onAddWishlist={() => addWishlist(m)}
                   />
@@ -460,7 +463,7 @@ export default function App() {
 }
 
 /* ------------------------ MovieRow ------------------------ */
-function MovieRow({ movie, genresMap = {}, onMarkWatched, onAddWishlist }) {
+function MovieRow({ movie, genresMap = {}, isWatched, onMarkWatched, onAddWishlist }) {
   return (
     <div className="movie-card card-hover movie-row">
       <img className="movie-poster" src={movie.poster_path ? `${IMG_BASE}${movie.poster_path}` : ""} alt={movie.title} />
@@ -472,7 +475,16 @@ function MovieRow({ movie, genresMap = {}, onMarkWatched, onAddWishlist }) {
           </div>
 
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <button className="btn" onClick={() => onMarkWatched && onMarkWatched(movie)}>Mark watched</button>
+            <button
+              className={`btn ${isWatched ? "btn-watched" : ""}`}
+              onClick={() => {
+                if (!isWatched) onMarkWatched(movie);
+              }}
+              disabled={isWatched}
+              title={isWatched ? "Already marked as watched" : "Mark as watched"}
+            >
+              {isWatched ? "✓ Watched" : "Mark watched"}
+            </button>
             <button className="btn" onClick={() => onAddWishlist && onAddWishlist(movie)}>Wishlist</button>
             <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">Open</a>
           </div>

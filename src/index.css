@@ -319,3 +319,23 @@ select:-moz-focusring {
   color: transparent;
   text-shadow: 0 0 0 #e5e7eb;
 }
+
+/* watched button state */
+.btn-watched {
+  background: linear-gradient(180deg, #1f8f5f, #16734a);
+  border: none;
+  color: #eafff4;
+  cursor: default;
+}
+
+/* hover effect ONLY for mark watched (not wishlist) */
+.btn:not(.btn-watched):hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(79, 124, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* disabled button cleanup */
+.btn:disabled {
+  opacity: 0.85;
+}
