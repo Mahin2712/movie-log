@@ -339,3 +339,23 @@ select:-moz-focusring {
 .btn:disabled {
   opacity: 0.85;
 }
+
+.search-bar:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.search-bar:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79, 124, 255, 0.25);
+}
+
+.btn:hover:not(:disabled):not(.btn-watched) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-tabs button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}

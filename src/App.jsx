@@ -73,6 +73,12 @@ export default function App() {
   const [refreshMins, setRefreshMins] = useState(
     () => Number(localStorage.getItem("movieApp_refreshMins") || "30")
   );
+  // Exit search mode
+  const exitSearchMode = () => {
+    setMainSearch("");
+    setDiscoverResults([]);
+  };
+
 
   // Persist to localStorage
   useEffect(() => { localStorage.setItem("movieApp_apiKey", apiKey || "") }, [apiKey]);
@@ -241,9 +247,9 @@ export default function App() {
           </div>
 
           <div className="nav-tabs" role="tablist" aria-label="tabs" style={{ marginLeft: 8 }}>
-            <button className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>All</button>
-            <button className={activeTab === "watchlist" ? "active" : ""} onClick={() => setActiveTab("watchlist")}>Watchlist</button>
-            <button className={activeTab === "wishlist" ? "active" : ""} onClick={() => setActiveTab("wishlist")}>Wishlist</button>
+            <button className={activeTab === "all" ? "active" : ""} onClick={() => { exitSearchMode(); setActiveTab("all") }}>All</button>
+            <button className={activeTab === "watchlist" ? "active" : ""} onClick={() => { exitSearchMode(); setActiveTab("watchlist") }}>Watchlist</button>
+            <button className={activeTab === "wishlist" ? "active" : ""} onClick={() => { exitSearchMode(); setActiveTab("wishlist") }}>Wishlist</button>
           </div>
         </div>
 
