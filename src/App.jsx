@@ -129,12 +129,14 @@ export default function App() {
         id: m.id,
         tmdb_id: m.id,
         title: m.title,
+        poster_path: m.poster_path || null,   // ✅ ADD THIS
         release_date: m.release_date || null,
         overview: m.overview || "",
         genre_ids: m.genre_ids || [],
         dateAdded: new Date().toISOString(),
         rating: null
       };
+
       setWatched(p => [newItem, ...p]);
     }
     // remove from wishlist
@@ -147,10 +149,13 @@ export default function App() {
         id: m.id,
         tmdb_id: m.id,
         title: m.title,
+        poster_path: m.poster_path || null,   // ✅ ADD THIS
         release_date: m.release_date || null,
         overview: m.overview || "",
+        genre_ids: m.genre_ids || [],
         dateAdded: new Date().toISOString()
       };
+
       setWishlist(p => [newItem, ...p]);
     }
   };
