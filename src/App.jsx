@@ -227,7 +227,9 @@ export default function App() {
       <div className="app-header container-max">
         <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
           <div className="app-title">
-            <h1>Movie Log</h1>
+<h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+  Movie Log
+</h1>
             <span>keep track of what you watch</span>
           </div>
 
