@@ -384,3 +384,17 @@ select:-moz-focusring {
   border-color: rgba(255, 90, 122, 0.4);
   background: rgba(255, 90, 122, 0.12);
 }
+
+/* wishlist disabled (when watched) */
+.wishlist-btn.disabled,
+.wishlist-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* prevent hover effects when disabled */
+.wishlist-btn.disabled:hover {
+  background: transparent;
+}

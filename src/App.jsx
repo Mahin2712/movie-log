@@ -278,26 +278,28 @@ export default function App() {
       </div>
 
       {/* carousel */}
-      <div className="carousel-section container-max">
-        <div className="carousel-title">POPULAR / NOW PLAYING</div>
-        <div className="carousel-wrapper">
-          <button className="carousel-arrow left" onClick={() => scrollCarousel("left")}>◀</button>
-          <div ref={carouselRef} className="carousel">
-            {popular.map(m => (
-              <div key={m.id} className="scroll-card" style={{ minWidth: 180 }}>
-                <div style={{ width: 180, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border-soft)", background: "#081026" }}>
-                  <img src={m.poster_path ? IMG_BASE + m.poster_path : ""} alt={m.title} style={{ width: "100%", height: 260, objectFit: "cover", display: "block" }} />
-                  <div style={{ padding: 8 }}>
-                    <div style={{ fontWeight: 700 }}>{m.title}</div>
-                    <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{m.vote_average ? `★ ${m.vote_average.toFixed(1)}` : ""}</div>
+      {activeTab === "all" && (
+        <div className="carousel-section container-max">
+          <div className="carousel-title">POPULAR / NOW PLAYING</div>
+          <div className="carousel-wrapper">
+            <button className="carousel-arrow left" onClick={() => scrollCarousel("left")}>◀</button>
+            <div ref={carouselRef} className="carousel">
+              {popular.map(m => (
+                <div key={m.id} className="scroll-card" style={{ minWidth: 180 }}>
+                  <div style={{ width: 180, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border-soft)", background: "#081026" }}>
+                    <img src={m.poster_path ? IMG_BASE + m.poster_path : ""} alt={m.title} style={{ width: "100%", height: 260, objectFit: "cover", display: "block" }} />
+                    <div style={{ padding: 8 }}>
+                      <div style={{ fontWeight: 700 }}>{m.title}</div>
+                      <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{m.vote_average ? `★ ${m.vote_average.toFixed(1)}` : ""}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <button className="carousel-arrow right" onClick={() => scrollCarousel("right")}>▶</button>
           </div>
-          <button className="carousel-arrow right" onClick={() => scrollCarousel("right")}>▶</button>
         </div>
-      </div>
+      )}
 
       {/* main content */}
       <div className="container-max" style={{ marginTop: 20 }}>
@@ -415,27 +417,7 @@ export default function App() {
           </div>
         )}
 
-        {/* all (default) view */}
-        {activeTab === "all" && !isSearchingMain && (
-          <div style={{ marginTop: 22 }}>
-            <div style={{ display: "grid", gap: 12 }}>
-              {popular.slice(0, 6).map(m => (
-                <MovieRow
-                  key={m.id}
-                  movie={m}
-                  genresMap={genresMap}
-                  isWatched={isWatched(m.id)}        // ✅ ADD
-                  isWishlisted={isWishlisted(m.id)}  // ✅ ADD
-                  onMarkWatched={() => markWatched(m)}
-                  onToggleWishlist={() => {
-                    isWishlisted(m.id)
-                      ? removeFromWishlist(m.id)
-                      : addWishlist(m);
-                  }} />
-              ))}
-            </div>
-          </div>
-        )}
+      
       </div>
 
       {/* settings modal */}
@@ -492,6 +474,7 @@ function MovieRow({ movie, genresMap = {}, isWatched, isWishlisted, onMarkWatche
           </div>
 
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            {/* mark watched button */}
             <button
               className={`btn ${isWatched ? "btn-watched" : ""}`}
               onClick={() => {
@@ -502,13 +485,18 @@ function MovieRow({ movie, genresMap = {}, isWatched, isWishlisted, onMarkWatche
             >
               {isWatched ? "✓ Watched" : "Mark watched"}
             </button>
+            {/* wishlist button */}
             <button
-              className={`wishlist-btn ${isWishlisted ? "active" : ""}`}
-              onClick={() => onToggleWishlist(movie)}
-              title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              className={`wishlist-btn ${isWishlisted ? "active" : ""}  ${isWatched ? "disabled" : ""} `}
+              onClick={() => {
+                if (!isWatched) onToggleWishlist(movie);
+              }}
+              disabled={isWatched}
+              title={isWatched ? "Already watched" : isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
             >
               {isWishlisted ? "❤️" : "🤍"}
             </button>
+
             <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">Open</a>
           </div>
         </div>
