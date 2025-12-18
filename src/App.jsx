@@ -64,6 +64,8 @@ export default function App() {
   const [sortField, setSortField] = useState("dateAdded"); // title | rating | dateAdded | releaseDate
   const [sortAsc, setSortAsc] = useState(false);
   const isWatched = (movieId) => { return watched.some(w => w.id === movieId); };
+  const isWishlisted = (movieId) => { return wishlist.some(w => w.id === movieId); };
+
 
 
   // Carousel ref
@@ -316,9 +318,13 @@ export default function App() {
                     movie={m}
                     genresMap={genresMap}
                     isWatched={isWatched(m.id)}
+                    isWishlisted={isWishlisted(m.id)}
                     onMarkWatched={() => markWatched(m)}
-                    onAddWishlist={() => addWishlist(m)}
-                  />
+                    onToggleWishlist={() => {
+                      isWishlisted(m.id)
+                        ? removeFromWishlist(m.id)
+                        : addWishlist(m);
+                    }} />
                 ))}
               </div>
             )}
@@ -418,9 +424,14 @@ export default function App() {
                   key={m.id}
                   movie={m}
                   genresMap={genresMap}
+                  isWatched={isWatched(m.id)}        // ✅ ADD
+                  isWishlisted={isWishlisted(m.id)}  // ✅ ADD
                   onMarkWatched={() => markWatched(m)}
-                  onAddWishlist={() => addWishlist(m)}
-                />
+                  onToggleWishlist={() => {
+                    isWishlisted(m.id)
+                      ? removeFromWishlist(m.id)
+                      : addWishlist(m);
+                  }} />
               ))}
             </div>
           </div>
@@ -469,7 +480,7 @@ export default function App() {
 }
 
 /* ------------------------ MovieRow ------------------------ */
-function MovieRow({ movie, genresMap = {}, isWatched, onMarkWatched, onAddWishlist }) {
+function MovieRow({ movie, genresMap = {}, isWatched, isWishlisted, onMarkWatched, onToggleWishlist }) {
   return (
     <div className="movie-card card-hover movie-row">
       <img className="movie-poster" src={movie.poster_path ? `${IMG_BASE}${movie.poster_path}` : ""} alt={movie.title} />
@@ -491,7 +502,13 @@ function MovieRow({ movie, genresMap = {}, isWatched, onMarkWatched, onAddWishli
             >
               {isWatched ? "✓ Watched" : "Mark watched"}
             </button>
-            <button className="btn" onClick={() => onAddWishlist && onAddWishlist(movie)}>Wishlist</button>
+            <button
+              className={`wishlist-btn ${isWishlisted ? "active" : ""}`}
+              onClick={() => onToggleWishlist(movie)}
+              title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              {isWishlisted ? "❤️" : "🤍"}
+            </button>
             <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">Open</a>
           </div>
         </div>
