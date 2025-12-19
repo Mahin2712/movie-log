@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 
+/* ------------------------ MovieRow ------------------------ */
+import MovieRow from "./components/MovieRow.jsx";
+
+/* ------------------------ WatchedRow ------------------------ */
+import WatchedRow from "./components/WatchedRow.jsx";
+
+/* ------------------------ WishlistRow ------------------------ */
+import WishlistRow from "./components/WishlistRow.jsx";
+
 /**
  * Full App.jsx replacement
  * - Replaces the app UI and fixes:
@@ -337,33 +346,33 @@ export default function App() {
   };
 
   // Place near other helpers in App component
-const exportWatched = () => {
-  // JSON v2 export (preferred)
-  const payload = {
-    app: "movie-log",
-    version: 2,
-    exportedAt: new Date().toISOString(),
-    type: "watched",
-    movies: watched.map(w => ({
-      tmdb_id: w.tmdb_id || w.id,
-      title: w.title,
-      release_year: w.release_date?.slice(0, 4) || null,
-      rating: ratings[w.id] || null,
-      dateAdded: w.dateAdded || null
-    }))
+  const exportWatched = () => {
+    // JSON v2 export (preferred)
+    const payload = {
+      app: "movie-log",
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      type: "watched",
+      movies: watched.map(w => ({
+        tmdb_id: w.tmdb_id || w.id,
+        title: w.title,
+        release_year: w.release_date?.slice(0, 4) || null,
+        rating: ratings[w.id] || null,
+        dateAdded: w.dateAdded || null
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "watched_export_v2.json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
-
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json"
-  });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "watched_export_v2.json";
-  a.click();
-  URL.revokeObjectURL(url);
-};
 
 
   const addWishlist = (m) => {
@@ -606,9 +615,9 @@ const exportWatched = () => {
                   {sortAsc ? "⇧ Asc" : "⇩ Desc"}
                 </button>
 
-<button className="btn btn-primary" onClick={exportWatched}>
-  Export watched
-</button>
+                <button className="btn btn-primary" onClick={exportWatched}>
+                  Export watched
+                </button>
               </div>
             </div>
 
@@ -710,114 +719,8 @@ const exportWatched = () => {
   );
 }
 
-/* ------------------------ MovieRow ------------------------ */
-function MovieRow({ movie, genresMap = {}, isWatched, isWishlisted, onMarkWatched, onToggleWishlist }) {
-  return (
-    <div className="movie-card card-hover movie-row">
-      <img className="movie-poster" src={movie.poster_path ? `${IMG_BASE}${movie.poster_path}` : ""} alt={movie.title} />
-      <div className="movie-info" style={{ flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <h3 style={{ marginBottom: 6 }}>{movie.title}</h3>
-            <div className="year">{movie.release_date ? movie.release_date.slice(0, 4) : "—"}</div>
-          </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            {/* mark watched button */}
-            <button
-              className={`btn ${isWatched ? "btn-watched" : ""}`}
-              onClick={() => {
-                if (!isWatched) onMarkWatched(movie);
-              }}
-              disabled={isWatched}
-              title={isWatched ? "Already marked as watched" : "Mark as watched"}
-            >
-              {isWatched ? "✓ Watched" : "Mark watched"}
-            </button>
-            {/* wishlist button */}
-            <button
-              className={`wishlist-btn ${isWishlisted ? "active" : ""}  ${isWatched ? "disabled" : ""} `}
-              onClick={() => {
-                if (!isWatched) onToggleWishlist(movie);
-              }}
-              disabled={isWatched}
-              title={isWatched ? "Already watched" : isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-            >
-              {isWishlisted ? "❤️" : "🤍"}
-            </button>
 
-            <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">Open</a>
-          </div>
-        </div>
-
-        <p style={{ marginTop: 10, marginBottom: 10, color: "var(--text-muted)" }}>{movie.overview || ""}</p>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {(movie.genre_ids || []).slice(0, 6).map(gid => (
-            <span key={gid} className="genre-tag">{genresMap[gid] || "Genre"}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------ WatchedRow ------------------------ */
-function WatchedRow({ item, onRemove, onMoveToWishlist, rating, onSetRating }) {
-  return (
-    <div className="movie-card card">
-      <img className="movie-poster" src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : placeholderPoster(item)} alt={item.title} />
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div>
-            <h3 style={{ margin: 0 }}>{item.title}</h3>
-            <div className="year">{item.release_date ? item.release_date.slice(0, 4) : "—"}</div>
-          </div>
-
-          <div style={{ textAlign: "right" }}>
-            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Rating</div>
-            <select value={rating || ""} onChange={(e) => onSetRating && onSetRating(e.target.value)} className="rating-select">
-              <option value="">--</option>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <p style={{ color: "var(--text-muted)", marginTop: 10 }}>{item.overview || "No description saved."}</p>
-
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button className="btn" onClick={() => onRemove && onRemove(item.id)}>Remove</button>
-          <button className="btn" onClick={() => onMoveToWishlist && onMoveToWishlist(item.id)}>(re)moved? use Wishlist tab</button>
-          <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer">Open</a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------ WishlistRow ------------------------ */
-function WishlistRow({ item, onRemove, onMoveToWatched }) {
-  return (
-    <div className="movie-card card">
-      <img className="movie-poster" src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : placeholderPoster(item)} alt={item.title} />
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div>
-            <h3 style={{ margin: 0 }}>{item.title}</h3>
-            <div className="year">{item.release_date ? item.release_date.slice(0, 4) : "—"}</div>
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn" onClick={() => onMoveToWatched && onMoveToWatched(item.id)}>Move to watched</button>
-            <button className="btn" onClick={() => onRemove && onRemove(item.id)}>Remove</button>
-          </div>
-        </div>
-
-        <p style={{ color: "var(--text-muted)", marginTop: 10 }}>{item.overview || "No details saved."}</p>
-      </div>
-    </div>
-  );
-}
 
 /* placeholder poster if not present */
 function placeholderPoster(item) {
