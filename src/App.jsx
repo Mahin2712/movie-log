@@ -9,6 +9,10 @@ import WatchedRow from "./components/WatchedRow.jsx";
 /* ------------------------ WishlistRow ------------------------ */
 import WishlistRow from "./components/WishlistRow.jsx";
 
+/* ------------------------ SettingsModal ------------------------ */
+import SettingsModal from "./components/SettingsModal.jsx";
+
+
 /**
  * Full App.jsx replacement
  * - Replaces the app UI and fixes:
@@ -663,63 +667,22 @@ export default function App() {
 
       {/* settings modal */}
       {showSettings && (
-        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Settings</h3>
+        <SettingsModal
+          apiKey={apiKey}
+          setApiKey={setApiKey}
+          autoRefresh={refreshMins}
+          setAutoRefresh={setRefreshMins}
+          onImport={handleImportFile}
+          onClose={() => setShowSettings(false)}
+        />
 
-            <label style={{ display: "block", marginTop: 8, fontSize: 13, color: "var(--text-muted)" }}>TMDB API Key</label>
-            <input
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Paste TMDB v3 API key"
-              style={{ width: "100%", padding: 8, borderRadius: 8, marginTop: 6 }}
-            />
-
-            <label style={{ display: "block", marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>Auto refresh (mins)</label>
-            <input
-              type="number"
-              min="1"
-              value={refreshMins}
-              onChange={(e) => setRefreshMins(Math.max(1, Number(e.target.value || 1)))}
-              style={{ width: 120, padding: 8, borderRadius: 8, marginTop: 6 }}
-            />
-
-
-            <label className="card" style={{ marginTop: 16, padding: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                Import watched list
-              </div>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>
-                Supports old & new exports (CSV / JSON). Duplicates will be skipped.
-              </div>
-              <input
-                type="file"
-                accept=".json,.csv"
-                onChange={(e) => handleImportFile(e.target.files[0])}
-              />
-            </label>
-
-
-
-            <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn" onClick={() => setShowSettings(false)}>Close</button>
-              <button className="btn btn-primary" onClick={() => {
-                localStorage.setItem("movieApp_apiKey", apiKey || "");
-                localStorage.setItem("movieApp_refreshMins", String(refreshMins));
-                setShowSettings(false);
-                alert("Saved settings");
-              }}>Save</button>
-            </div>
-          </div>
-        </div>
       )}
+
 
       <div style={{ height: 28 }} />
     </div>
   );
 }
-
-
 
 
 /* placeholder poster if not present */

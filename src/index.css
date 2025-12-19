@@ -264,6 +264,17 @@ body {
   color: var(--text-main);
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+
 /* small card */
 .card {
   background: linear-gradient(180deg, rgba(8, 12, 24, 0.4), rgba(6, 10, 20, 0.35));
