@@ -27,8 +27,161 @@ export default function App() {
   const [mainSearch, setMainSearch] = useState("");
   const [loadingDiscover, setLoadingDiscover] = useState(false);
 
+  const normalizeId = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+
+  // Top genres from watched
+  const getTopGenres = () => {
+    const counts = {};
+
+    watched.forEach(m => {
+      (m.genre_ids || []).forEach(gid => {
+        counts[gid] = (counts[gid] || 0) + 1;
+      });
+    });
+
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([gid]) => Number(gid));
+  };
+
+  // Recommended movies based on top genres
+  const [recommended, setRecommended] = useState([]);
+
+
+  const extractTmdbId = (item) => {
+    // Known possible keys (old + new exports)
+    const possibleKeys = [
+      "tmdb_id",
+      "tmdb-id",
+      "tmdbId",
+      "tmdb",
+      "movie_id",
+      "id"
+    ];
+
+    for (const key of possibleKeys) {
+      if (item[key]) {
+        const n = Number(item[key]);
+        if (!Number.isNaN(n) && n > 1000) return n;
+      }
+    }
+
+    return null;
+  };
+
+
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
+
+  // Import option from JSON/CSV
+  const handleImportFile = async (file) => {
+    if (!file || !apiKey) {
+      alert("Missing file or TMDB API key");
+      return;
+    }
+
+    const text = await file.text();
+
+    // JSON import (preferred)
+    if (file.name.endsWith(".json")) {
+      const data = JSON.parse(text);
+      await smartImport(data.movies || data);
+      return;
+    }
+
+    // CSV import (legacy)
+    if (file.name.endsWith(".csv")) {
+      const lines = text.split("\n").filter(Boolean);
+      const headers = lines.shift().split(",").map(h => h.trim());
+
+      const rows = lines.map(line => {
+        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = values?.[i]?.replace(/"/g, ""));
+        return obj;
+      });
+
+      await smartImport(rows);
+    }
+  };
+
+
+  const smartImport = async (items) => {
+    const watchedMap = new Map();
+
+    // 1️⃣ Seed map with existing watched movies
+    watched.forEach(m => {
+      const id = normalizeId(m.tmdb_id || m.id);
+      if (id) watchedMap.set(id, m);
+    });
+
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    for (const item of items) {
+      let tmdbId = extractTmdbId(item);
+      tmdbId = normalizeId(tmdbId);
+
+      // Fallback search (only if ID missing)
+      if (!tmdbId && item.title) {
+        const year =
+          item.release_year ||
+          item.release_date?.slice(0, 4) ||
+          "";
+
+        const res = await fetch(
+          `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(item.title)}&year=${year}`
+        );
+        const data = await res.json();
+        tmdbId = normalizeId(data.results?.[0]?.id);
+      }
+
+      // ❌ Skip if still no ID or already exists
+      if (!tmdbId || watchedMap.has(tmdbId)) {
+        skippedCount++;
+        continue;
+      }
+
+      // Fetch TMDB data
+      const res = await fetch(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}`);
+      const m = await res.json();
+      if (!m || !m.id) {
+        skippedCount++;
+        continue;
+      }
+
+      watchedMap.set(tmdbId, {
+        id: m.id,
+        tmdb_id: m.id,
+        title: m.title,
+        poster_path: m.poster_path,
+        release_date: m.release_date,
+        overview: m.overview,
+        genre_ids: m.genres?.map(g => g.id) || [],
+        dateAdded: item.dateAdded || new Date().toISOString(),
+        rating: item.rating ?? null
+      });
+
+      importedCount++;
+    }
+
+    // 2️⃣ Commit ONCE, deduped
+    setWatched(Array.from(watchedMap.values()));
+
+    alert(
+      `Import finished\n\n` +
+      `Imported: ${importedCount}\n` +
+      `Skipped (duplicates): ${skippedCount}`
+    );
+  };
+
+
+
 
   // Genres (map id -> name) and keep also an array for selects
   const [genresMap, setGenresMap] = useState({});
@@ -113,6 +266,36 @@ export default function App() {
       .catch(() => setPopular([]));
   }, [apiKey]);
 
+  useEffect(() => {
+    if (!apiKey || watched.length === 0) {
+      setRecommended([]);
+      return;
+    }
+
+    const fetchRecommendations = async () => {
+      const topGenres = getTopGenres();
+      if (topGenres.length === 0) return;
+
+      try {
+        const url = `${TMDB_BASE}/discover/movie?api_key=${apiKey}&with_genres=${topGenres.join(",")}&sort_by=popularity.desc&page=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const filtered = (data.results || []).filter(m =>
+          !watched.some(w => w.id === m.id) &&
+          !wishlist.some(w => w.id === m.id)
+        );
+
+        setRecommended(filtered.slice(0, 8));
+      } catch {
+        setRecommended([]);
+      }
+    };
+
+    fetchRecommendations();
+  }, [apiKey, watched, wishlist]);
+
+
   // main search (discovery)
   const runMainSearch = async (q) => {
     if (!apiKey) return;
@@ -152,6 +335,36 @@ export default function App() {
     // remove from wishlist
     setWishlist(p => p.filter(w => w.id !== m.id));
   };
+
+  // Place near other helpers in App component
+const exportWatched = () => {
+  // JSON v2 export (preferred)
+  const payload = {
+    app: "movie-log",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    type: "watched",
+    movies: watched.map(w => ({
+      tmdb_id: w.tmdb_id || w.id,
+      title: w.title,
+      release_year: w.release_date?.slice(0, 4) || null,
+      rating: ratings[w.id] || null,
+      dateAdded: w.dateAdded || null
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "watched_export_v2.json";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
 
   const addWishlist = (m) => {
     if (!wishlist.some(w => w.id === m.id)) {
@@ -301,6 +514,33 @@ export default function App() {
         </div>
       )}
 
+      {activeTab === "all" && !isSearchingMain && recommended.length > 0 && (
+        <div className="container-max" style={{ marginTop: 26 }}>
+          <div className="carousel-title">
+            Recommended for you
+          </div>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {recommended.map(m => (
+              <MovieRow
+                key={m.id}
+                movie={m}
+                genresMap={genresMap}
+                isWatched={isWatched(m.id)}
+                isWishlisted={isWishlisted(m.id)}
+                onMarkWatched={() => markWatched(m)}
+                onToggleWishlist={() => {
+                  isWishlisted(m.id)
+                    ? removeFromWishlist(m.id)
+                    : addWishlist(m);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+
       {/* main content */}
       <div className="container-max" style={{ marginTop: 20 }}>
         {/* search results */}
@@ -366,17 +606,9 @@ export default function App() {
                   {sortAsc ? "⇧ Asc" : "⇩ Desc"}
                 </button>
 
-                <button className="btn btn-primary" onClick={() => {
-                  const rows = [["id", "title", "dateAdded", "release_date"]];
-                  watched.forEach(w => rows.push([w.id, `"${w.title || ""}"`, w.dateAdded || "", w.release_date || ""]));
-                  const csv = rows.map(r => r.join(",")).join("\n");
-                  const blob = new Blob([csv], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url; a.download = "watched_export.csv"; a.click(); URL.revokeObjectURL(url);
-                }}>
-                  Export watched
-                </button>
+<button className="btn btn-primary" onClick={exportWatched}>
+  Export watched
+</button>
               </div>
             </div>
 
@@ -417,7 +649,7 @@ export default function App() {
           </div>
         )}
 
-      
+
       </div>
 
       {/* settings modal */}
@@ -442,6 +674,23 @@ export default function App() {
               onChange={(e) => setRefreshMins(Math.max(1, Number(e.target.value || 1)))}
               style={{ width: 120, padding: 8, borderRadius: 8, marginTop: 6 }}
             />
+
+
+            <label className="card" style={{ marginTop: 16, padding: 12 }}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                Import watched list
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>
+                Supports old & new exports (CSV / JSON). Duplicates will be skipped.
+              </div>
+              <input
+                type="file"
+                accept=".json,.csv"
+                onChange={(e) => handleImportFile(e.target.files[0])}
+              />
+            </label>
+
+
 
             <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="btn" onClick={() => setShowSettings(false)}>Close</button>
