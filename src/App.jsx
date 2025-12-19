@@ -18,6 +18,9 @@ import { handleImportFile, exportWatched } from "./utils/ImportExport";
 /* ---------- All Page ------------------------ */
 import AllPage from "./pages/AllPage.jsx";
 
+/* ---------- Watchlist Page ------------------------ */
+import WatchlistPage from "./pages/WatchlistPage.jsx";
+
 
 /**
  * Full App.jsx replacement
@@ -479,32 +482,19 @@ export default function App() {
               )}
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
-                {activeTab === "watchlist" && displayedWatchlist.map(w => (
-                  <WatchedRow
-                    key={w.id}
-                    item={w}
+                {activeTab === "watchlist" && (
+                  <WatchlistPage
+                    watched={displayedWatchlist}
                     genresMap={genresMap}
-                    rating={ratings[w.id] || ""}
-                    onSetRating={(v) => setRating(w.id, v)}
-                    onRemove={() => removeFromWatched(w.id)}
-                    onMoveToWishlist={() => {
-                      setWishlist(p => [{ ...w, dateAdded: new Date().toISOString() }, ...p]);
-                      setWatched(p => p.filter(x => x.id !== w.id));
-                    }}
+                    ratings={ratings}
+                    onRemove={removeFromWatched}
+                    onRate={setRating}
+                    onMoveToWishlist={setWishlist}
                   />
-                ))}
+                )}
 
-                {activeTab === "wishlist" && wishlist.map(w => (
-                  <WishlistRow
-                    key={w.id}
-                    item={w}
-                    onRemove={() => removeFromWishlist(w.id)}
-                    onMoveToWatched={() => {
-                      setWatched(p => [{ ...w, dateAdded: new Date().toISOString(), genre_ids: w.genre_ids || [] }, ...p]);
-                      setWishlist(p => p.filter(x => x.id !== w.id));
-                    }}
-                  />
-                ))}
+
+
               </div>
             </div>
           </div>
