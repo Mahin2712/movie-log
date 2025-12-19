@@ -1,5 +1,5 @@
 // src/components/WishlistRow.jsx
-import { IMG_BASE } from "../utils/constants";
+import { IMG_BASE } from "../utils/constants.js";
 
 export default function WishlistRow({
   item,

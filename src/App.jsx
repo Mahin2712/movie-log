@@ -12,6 +12,9 @@ import WishlistRow from "./components/WishlistRow.jsx";
 /* ------------------------ SettingsModal ------------------------ */
 import SettingsModal from "./components/SettingsModal.jsx";
 
+/* ---------- import/export helpers ------------------------ */
+import { handleImportFile, exportWatched } from "./utils/ImportExport";
+
 
 /**
  * Full App.jsx replacement
@@ -25,8 +28,8 @@ import SettingsModal from "./components/SettingsModal.jsx";
  *   movieApp_apiKey, movieApp_watched, movieApp_wishlist, movieApp_ratings, movieApp_refreshMins
  */
 
-const TMDB_BASE = "https://api.themoviedb.org/3";
-const IMG_BASE = "https://image.tmdb.org/t/p/w342";
+import { TMDB_BASE } from "./utils/constants.js";
+import { IMG_BASE } from "./utils/constants.js";
 
 export default function App() {
   // Settings / Keys
@@ -40,10 +43,7 @@ export default function App() {
   const [mainSearch, setMainSearch] = useState("");
   const [loadingDiscover, setLoadingDiscover] = useState(false);
 
-  const normalizeId = (v) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
+
 
 
   // Top genres from watched
@@ -66,132 +66,15 @@ export default function App() {
   const [recommended, setRecommended] = useState([]);
 
 
-  const extractTmdbId = (item) => {
-    // Known possible keys (old + new exports)
-    const possibleKeys = [
-      "tmdb_id",
-      "tmdb-id",
-      "tmdbId",
-      "tmdb",
-      "movie_id",
-      "id"
-    ];
-
-    for (const key of possibleKeys) {
-      if (item[key]) {
-        const n = Number(item[key]);
-        if (!Number.isNaN(n) && n > 1000) return n;
-      }
-    }
-
-    return null;
-  };
-
 
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
 
   // Import option from JSON/CSV
-  const handleImportFile = async (file) => {
-    if (!file || !apiKey) {
-      alert("Missing file or TMDB API key");
-      return;
-    }
-
-    const text = await file.text();
-
-    // JSON import (preferred)
-    if (file.name.endsWith(".json")) {
-      const data = JSON.parse(text);
-      await smartImport(data.movies || data);
-      return;
-    }
-
-    // CSV import (legacy)
-    if (file.name.endsWith(".csv")) {
-      const lines = text.split("\n").filter(Boolean);
-      const headers = lines.shift().split(",").map(h => h.trim());
-
-      const rows = lines.map(line => {
-        const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = values?.[i]?.replace(/"/g, ""));
-        return obj;
-      });
-
-      await smartImport(rows);
-    }
-  };
 
 
-  const smartImport = async (items) => {
-    const watchedMap = new Map();
 
-    // 1️⃣ Seed map with existing watched movies
-    watched.forEach(m => {
-      const id = normalizeId(m.tmdb_id || m.id);
-      if (id) watchedMap.set(id, m);
-    });
 
-    let importedCount = 0;
-    let skippedCount = 0;
-
-    for (const item of items) {
-      let tmdbId = extractTmdbId(item);
-      tmdbId = normalizeId(tmdbId);
-
-      // Fallback search (only if ID missing)
-      if (!tmdbId && item.title) {
-        const year =
-          item.release_year ||
-          item.release_date?.slice(0, 4) ||
-          "";
-
-        const res = await fetch(
-          `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(item.title)}&year=${year}`
-        );
-        const data = await res.json();
-        tmdbId = normalizeId(data.results?.[0]?.id);
-      }
-
-      // ❌ Skip if still no ID or already exists
-      if (!tmdbId || watchedMap.has(tmdbId)) {
-        skippedCount++;
-        continue;
-      }
-
-      // Fetch TMDB data
-      const res = await fetch(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}`);
-      const m = await res.json();
-      if (!m || !m.id) {
-        skippedCount++;
-        continue;
-      }
-
-      watchedMap.set(tmdbId, {
-        id: m.id,
-        tmdb_id: m.id,
-        title: m.title,
-        poster_path: m.poster_path,
-        release_date: m.release_date,
-        overview: m.overview,
-        genre_ids: m.genres?.map(g => g.id) || [],
-        dateAdded: item.dateAdded || new Date().toISOString(),
-        rating: item.rating ?? null
-      });
-
-      importedCount++;
-    }
-
-    // 2️⃣ Commit ONCE, deduped
-    setWatched(Array.from(watchedMap.values()));
-
-    alert(
-      `Import finished\n\n` +
-      `Imported: ${importedCount}\n` +
-      `Skipped (duplicates): ${skippedCount}`
-    );
-  };
 
 
 
@@ -350,33 +233,7 @@ export default function App() {
   };
 
   // Place near other helpers in App component
-  const exportWatched = () => {
-    // JSON v2 export (preferred)
-    const payload = {
-      app: "movie-log",
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      type: "watched",
-      movies: watched.map(w => ({
-        tmdb_id: w.tmdb_id || w.id,
-        title: w.title,
-        release_year: w.release_date?.slice(0, 4) || null,
-        rating: ratings[w.id] || null,
-        dateAdded: w.dateAdded || null
-      }))
-    };
 
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json"
-    });
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "watched_export_v2.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
 
   const addWishlist = (m) => {
@@ -619,9 +476,11 @@ export default function App() {
                   {sortAsc ? "⇧ Asc" : "⇩ Desc"}
                 </button>
 
-                <button className="btn btn-primary" onClick={exportWatched}>
+                <button className="btn" onClick={() => exportWatched({ watched, ratings })}>
                   Export watched
                 </button>
+
+
               </div>
             </div>
 
@@ -672,7 +531,15 @@ export default function App() {
           setApiKey={setApiKey}
           autoRefresh={refreshMins}
           setAutoRefresh={setRefreshMins}
-          onImport={handleImportFile}
+          onImport={(file) =>
+            handleImportFile({
+              file,
+              apiKey,
+              watched,
+              setWatched,
+              TMDB_BASE
+            })
+          }
           onClose={() => setShowSettings(false)}
         />
 
@@ -682,11 +549,4 @@ export default function App() {
       <div style={{ height: 28 }} />
     </div>
   );
-}
-
-
-/* placeholder poster if not present */
-function placeholderPoster(item) {
-  const txt = encodeURIComponent((item && item.title) || "poster");
-  return `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450'><rect width='100%' height='100%' fill='%23081a2a'/><text x='50%' y='50%' fill='%23ffffff' font-size='20' text-anchor='middle' dominant-baseline='middle'>${txt}</text></svg>`;
 }
