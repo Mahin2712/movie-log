@@ -15,6 +15,9 @@ import SettingsModal from "./components/SettingsModal.jsx";
 /* ---------- import/export helpers ------------------------ */
 import { handleImportFile, exportWatched } from "./utils/ImportExport";
 
+/* ---------- All Page ------------------------ */
+import AllPage from "./pages/AllPage.jsx";
+
 
 /**
  * Full App.jsx replacement
@@ -360,29 +363,15 @@ export default function App() {
         </div>
       </div>
 
-      {/* carousel */}
+      {/* All Page */}
       {activeTab === "all" && (
-        <div className="carousel-section container-max">
-          <div className="carousel-title">POPULAR / NOW PLAYING</div>
-          <div className="carousel-wrapper">
-            <button className="carousel-arrow left" onClick={() => scrollCarousel("left")}>◀</button>
-            <div ref={carouselRef} className="carousel">
-              {popular.map(m => (
-                <div key={m.id} className="scroll-card" style={{ minWidth: 180 }}>
-                  <div style={{ width: 180, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border-soft)", background: "#081026" }}>
-                    <img src={m.poster_path ? IMG_BASE + m.poster_path : ""} alt={m.title} style={{ width: "100%", height: 260, objectFit: "cover", display: "block" }} />
-                    <div style={{ padding: 8 }}>
-                      <div style={{ fontWeight: 700 }}>{m.title}</div>
-                      <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{m.vote_average ? `★ ${m.vote_average.toFixed(1)}` : ""}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="carousel-arrow right" onClick={() => scrollCarousel("right")}>▶</button>
-          </div>
-        </div>
+        <AllPage
+          popular={popular}
+          carouselRef={carouselRef}
+          scrollCarousel={scrollCarousel}
+        />
       )}
+
 
       {activeTab === "all" && !isSearchingMain && recommended.length > 0 && (
         <div className="container-max" style={{ marginTop: 26 }}>
