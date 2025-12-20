@@ -347,7 +347,7 @@ export default function App() {
     <div className={isSearchingMain ? "search-active" : ""}>
       {/* header */}
       <div className="app-header container-max">
-        <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+        <div className="flex-gap-12 flex-center">
           <div className="app-title">
             <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
               Movie Log
@@ -362,7 +362,7 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="flex-gap-12 flex-center">
           <input
             className="search-bar"
             placeholder="Search movies..."
@@ -400,7 +400,7 @@ export default function App() {
             Recommended for you
           </div>
 
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="grid-gap-12">
             {recommended.map(m => (
               <MovieRow
                 key={m.id}
@@ -425,15 +425,15 @@ export default function App() {
       <div className="container-max" style={{ marginTop: 20 }}>
         {/* search results */}
         {isSearchingMain ? (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ marginBottom: 10, color: "var(--text-muted)" }}>
+          <div className="mt-8">
+          <div className="text-muted mb-10">
               Showing search results for <strong>"{mainSearch}"</strong>
               &nbsp;&nbsp;
               <button className="btn" style={{ marginLeft: 8 }} onClick={() => { setMainSearch(""); setDiscoverResults([]); }}>Clear</button>
             </div>
 
             {loadingDiscover ? <div style={{ color: "var(--text-muted)" }}>Loading…</div> : (
-              <div style={{ display: "grid", gap: 14 }}>
+              <div className="grid-gap-14">
                 {(discoverResults || []).map(m => (
                   <MovieRow
                     key={m.id}
@@ -455,8 +455,8 @@ export default function App() {
 
         {/* watchlist / wishlist panel */}
         {activeTab !== "all" && (
-          <div style={{ marginTop: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="mt-18">
+            <div className="flex-gap-8 flex-center">
               <input
                 placeholder={`Search ${activeTab === "watchlist" ? "watchlist" : "wishlist"}...`}
                 className="search-bar"
@@ -473,7 +473,7 @@ export default function App() {
                 {genresArray.map(g => <option key={g.id} value={String(g.id)}>{g.name}</option>)}
               </select>
 
-              <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
+              <div className="flex-gap-8 flex-center toolbar-right">
                 <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Sort:</div>
                 <select value={sortField} onChange={(e) => setSortField(e.target.value)} style={{ borderRadius: 8, padding: "6px 10px" }}>
                   <option value="dateAdded">Date added</option>
@@ -494,7 +494,7 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginTop: 14 }}>
+          <div className="mt-14">
               {activeTab === "watchlist" && displayedWatchlist.length === 0 && (
                 <div className="card" style={{ padding: 16, color: "var(--text-muted)" }}>No items in watchlist.</div>
               )}
