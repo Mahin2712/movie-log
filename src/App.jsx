@@ -21,6 +21,9 @@ import AllPage from "./pages/AllPage.jsx";
 /* ---------- Watchlist Page ------------------------ */
 import WatchlistPage from "./pages/WatchlistPage.jsx";
 
+/* ---------- Wishlist Page ------------------------ */
+import WishlistPage from "./pages/WishlistPage.jsx";
+
 
 /**
  * Full App.jsx replacement
@@ -324,6 +327,21 @@ export default function App() {
 
   const isSearchingMain = mainSearch && mainSearch.trim().length > 0;
   const displayedWatchlist = buildDisplayedWatchlist();
+  const displayedWishlist = wishlist.filter(w => {
+    // genre filter
+    if (watchFilterGenre !== "all") {
+      const gid = Number(watchFilterGenre);
+      if (!Array.isArray(w.genre_ids) || !w.genre_ids.includes(gid)) return false;
+    }
+
+    // text search
+    if (watchSearch.trim()) {
+      return (w.title || "").toLowerCase().includes(watchSearch.toLowerCase());
+    }
+
+    return true;
+  });
+
 
   return (
     <div className={isSearchingMain ? "search-active" : ""}>
@@ -489,9 +507,19 @@ export default function App() {
                     ratings={ratings}
                     onRemove={removeFromWatched}
                     onRate={setRating}
-                    onMoveToWishlist={setWishlist}
+                    onMoveToWishlist={addWishlist}
                   />
                 )}
+
+                {activeTab === "wishlist" && (
+                  <WishlistPage
+                    wishlist={displayedWishlist}
+                    genresMap={genresMap}
+                    onRemove={removeFromWishlist}
+                    onMoveToWatched={markWatched}
+                  />
+                )}
+
 
 
 
