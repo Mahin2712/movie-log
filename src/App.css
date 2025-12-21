@@ -1,3 +1,15 @@
+/* Highlight effect for rating button on hover */
+.rating-display:hover {
+  box-shadow: 0 0 0 3px #2196f366, 0 2px 8px #21cbf355;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+/* Glow effect for star hover */
+.star-panel .star-slot:hover .star-visual {
+  filter: drop-shadow(0 0 6px #ffd54d) drop-shadow(0 0 12px #ffd54d);
+  transition: filter 0.2s;
+}
 #root {
   max-width: 1280px;
   margin: 0 auto;

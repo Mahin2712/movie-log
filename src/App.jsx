@@ -24,6 +24,10 @@ import WatchlistPage from "./pages/WatchlistPage.jsx";
 /* ---------- Wishlist Page ------------------------ */
 import WishlistPage from "./pages/WishlistPage.jsx";
 
+/* ---------- insights ------------------------ */
+import { getWatchStats } from "./utils/stats.js";
+import InsightsPage from "./pages/InsightsPage.jsx";
+
 
 /**
  * Full App.jsx replacement
@@ -123,7 +127,32 @@ export default function App() {
   const [sortAsc, setSortAsc] = useState(false);
   const isWatched = (movieId) => { return watched.some(w => w.id === movieId); };
   const isWishlisted = (movieId) => { return wishlist.some(w => w.id === movieId); };
+  const [wishSort, setWishSort] = useState("newest");
 
+
+
+  const getSortedWishlist = React.useMemo(() => {
+    let list = [...wishlist];
+
+    switch (wishSort) {
+      case "oldest":
+        list.sort((a, b) => new Date(a.dateAdded) - new Date(b.dateAdded));
+        break;
+
+      case "az":
+        list.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+
+      case "za":
+        list.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+
+      default: // newest
+        list.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+    }
+
+    return list;
+  }, [wishlist, wishSort]);
 
 
   // Carousel ref
@@ -341,6 +370,11 @@ export default function App() {
 
     return true;
   });
+  const watchStats = React.useMemo(() => {
+    return getWatchStats(watched);
+  }, [watched]);
+
+
 
 
   return (
@@ -355,11 +389,41 @@ export default function App() {
             <span>keep track of what you watch</span>
           </div>
 
-          <div className="nav-tabs" role="tablist" aria-label="tabs" style={{ marginLeft: 8 }}>
-            <button className={activeTab === "all" ? "active" : ""} onClick={() => { exitSearchMode(); setActiveTab("all") }}>All</button>
-            <button className={activeTab === "watchlist" ? "active" : ""} onClick={() => { exitSearchMode(); setActiveTab("watchlist") }}>Watchlist</button>
-            <button className={activeTab === "wishlist" ? "active" : ""} onClick={() => { exitSearchMode(); setActiveTab("wishlist") }}>Wishlist</button>
+          <div
+            className="nav-tabs"
+            role="tablist"
+            aria-label="tabs"
+            style={{ marginLeft: 8 }}
+          >
+            <button
+              className={`tab ${activeTab === "all" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("all"); }}
+            >
+              All
+            </button>
+
+            <button
+              className={`tab ${activeTab === "watchlist" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("watchlist"); }}
+            >
+              Watchlist
+            </button>
+
+            <button
+              className={`tab ${activeTab === "wishlist" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("wishlist"); }}
+            >
+              Wishlist
+            </button>
+
+            <button
+              className={`tab ${activeTab === "insights" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("insights"); }}
+            >
+              Insights
+            </button>
           </div>
+
         </div>
 
         <div className="flex-gap-12 flex-center">
@@ -426,7 +490,7 @@ export default function App() {
         {/* search results */}
         {isSearchingMain ? (
           <div className="mt-8">
-          <div className="text-muted mb-10">
+            <div className="text-muted mb-10">
               Showing search results for <strong>"{mainSearch}"</strong>
               &nbsp;&nbsp;
               <button className="btn" style={{ marginLeft: 8 }} onClick={() => { setMainSearch(""); setDiscoverResults([]); }}>Clear</button>
@@ -456,45 +520,8 @@ export default function App() {
         {/* watchlist / wishlist panel */}
         {activeTab !== "all" && (
           <div className="mt-18">
-            <div className="flex-gap-8 flex-center">
-              <input
-                placeholder={`Search ${activeTab === "watchlist" ? "watchlist" : "wishlist"}...`}
-                className="search-bar"
-                value={watchSearch}
-                onChange={(e) => setWatchSearch(e.target.value)}
-              />
 
-              <select
-                className="dropdown-dark"
-                value={watchFilterGenre}
-                onChange={(e) => setWatchFilterGenre(e.target.value)}
-              >
-                <option value="all">All genres</option>
-                {genresArray.map(g => <option key={g.id} value={String(g.id)}>{g.name}</option>)}
-              </select>
-
-              <div className="flex-gap-8 flex-center toolbar-right">
-                <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Sort:</div>
-                <select value={sortField} onChange={(e) => setSortField(e.target.value)} style={{ borderRadius: 8, padding: "6px 10px" }}>
-                  <option value="dateAdded">Date added</option>
-                  <option value="releaseDate">Release date</option>
-                  <option value="rating">Rating</option>
-                  <option value="title">Title</option>
-                </select>
-
-                <button className="btn" onClick={() => setSortAsc(s => !s)} title="Toggle sort order">
-                  {sortAsc ? "⇧ Asc" : "⇩ Desc"}
-                </button>
-
-                <button className="btn" onClick={() => exportWatched({ watched, ratings })}>
-                  Export watched
-                </button>
-
-
-              </div>
-            </div>
-
-          <div className="mt-14">
+            <div className="mt-14">
               {activeTab === "watchlist" && displayedWatchlist.length === 0 && (
                 <div className="card" style={{ padding: 16, color: "var(--text-muted)" }}>No items in watchlist.</div>
               )}
@@ -511,6 +538,7 @@ export default function App() {
                   />
                 )}
 
+
                 {activeTab === "wishlist" && (
                   <WishlistPage
                     wishlist={displayedWishlist}
@@ -519,6 +547,14 @@ export default function App() {
                     onMoveToWatched={markWatched}
                   />
                 )}
+
+                {activeTab === "insights" && (
+                  <InsightsPage
+                    stats={watchStats}
+                    wishlist={wishlist}
+                  />
+                )}
+
 
 
 

@@ -1,33 +1,120 @@
-// src/components/WatchedRow.jsx
+import { useState } from "react";
 import { IMG_BASE } from "../utils/constants";
 
-// src/components/WatchedRow.jsx
-export default function WatchedRow({ item, onRemove, onMoveToWishlist, rating, onSetRating }) {
+export default function WatchedRow({
+    item,
+    onRemove,
+    onMoveToWishlist,
+    rating,
+    onSetRating
+}) {
+    const [open, setOpen] = useState(false);
+    const [hover, setHover] = useState(null);
+
+    const displayRating = hover ?? rating;
+    const starClass = (i) => {
+        const v = i + 1;
+        if (displayRating >= v) return "full";
+        if (displayRating >= v - 0.5) return "half";
+        return "";
+    };
+
     return (
         <div className="movie-card card">
-            <img className="movie-poster" src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : placeholderPoster(item)} alt={item.title} />
+            <img
+                className="movie-poster"
+                src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
+                alt={item.title}
+            />
+
             <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                {/* HEADER */}
+                <div className="flex-between">
                     <div>
-                        <h3 style={{ margin: 0 }}>{item.title}</h3>
-                        <div className="year">{item.release_date ? item.release_date.slice(0, 4) : "—"}</div>
+                        <h3>{item.title}</h3>
+                        <div className="year">
+                            {item.release_date?.slice(0, 4) || "—"}
+                        </div>
                     </div>
 
-                    <div style={{ textAlign: "right" }}>
-                        <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Rating</div>
-                        <select value={rating || ""} onChange={(e) => onSetRating && onSetRating(e.target.value)} className="rating-select">
-                            <option value="">--</option>
-                            {Array.from({ length: 10 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
+                    {/* RATING DISPLAY */}
+                    <div className="rating-display" onClick={() => setOpen(!open)}>
+                        {rating ? (
+                            <span
+                                style={{
+                                    background: "linear-gradient(90deg, #2196f3 0%, #21cbf3 100%)",
+                                    WebkitBackgroundClip: "text",
+                                    WebkitTextFillColor: "transparent",
+                                    fontWeight: 600,
+                                    display: "inline-block"
+                                }}
+                            >
+                                ★ {rating?.toFixed(1)}
+                            </span>
+                        ) : (
+                            <span className="star-icon muted">★</span>
+                        )}
                     </div>
                 </div>
 
-                <p style={{ color: "var(--text-muted)", marginTop: 10 }}>{item.overview || "No description saved."}</p>
+                {/* ⭐ STAR PANEL */}
+                {open && (
+                    <div
+                        className="star-panel"
+                        onMouseLeave={() => setHover(null)}
+                    >
+                        {Array.from({ length: 10 }).map((_, i) => (
+                            <div key={i} className="star-slot">
+                                <span className={`star-visual ${starClass(i)}`}>
+                                    ★
+                                </span>
 
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button className="btn" onClick={() => onRemove && onRemove(item.id)}>Remove</button>
-                    <button className="btn" onClick={() => onMoveToWishlist && onMoveToWishlist(item.id)}>(re)moved? use Wishlist tab</button>
-                    <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${item.tmdb_id}`} target="_blank" rel="noreferrer">Open</a>
+                                {/* HALF */}
+                                <div
+                                    className="star-hit left"
+                                    onMouseEnter={() => setHover(i + 0.5)}
+                                    onClick={() => {
+                                        onSetRating(i + 0.5);
+                                        setOpen(false);
+                                    }}
+                                />
+
+                                {/* FULL */}
+                                <div
+                                    className="star-hit right"
+                                    onMouseEnter={() => setHover(i + 1)}
+                                    onClick={() => {
+                                        onSetRating(i + 1);
+                                        setOpen(false);
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                )}
+
+                {/* OVERVIEW */}
+                <p className="mt-8">{item.overview || "No description saved."}</p>
+
+                {/* ACTIONS */}
+                <div className="flex-gap-8 mt-8">
+                    <button className="btn" onClick={() => onRemove(item.id)}>
+                        Remove
+                    </button>
+
+                    <button className="btn" onClick={() => onMoveToWishlist(item.id)}>
+                        Move to Wishlist
+                    </button>
+
+                    <a
+                        className="btn btn-ghost"
+                        href={`https://www.themoviedb.org/movie/${item.tmdb_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Open
+                    </a>
                 </div>
             </div>
         </div>
