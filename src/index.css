@@ -954,3 +954,34 @@ select:-moz-focusring {
   transform: scale(1.03);
   filter: brightness(0.90);
 }
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.pagination button {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  color: #cfe1ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: rgba(88,140,255,0.25);
+}
+
+.pagination button.active {
+  background: #588cff;
+  color: #fff;
+}
+
+.pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

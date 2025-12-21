@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import WishlistRow from "../components/WishlistRow";
+
+const PAGE_SIZE = 12; // 🔧 change to 10 / 16 if you want
 
 export default function WishlistPage({
     wishlist,
@@ -7,16 +9,24 @@ export default function WishlistPage({
     onRemove,
     onMoveToWatched
 }) {
-    // 🔹 Local UI state (wishlist-only)
+    // 🔹 Wishlist-only UI state
     const [search, setSearch] = useState("");
     const [genre, setGenre] = useState("all");
     const [sortBy, setSortBy] = useState("newest");
 
-    // 🔹 Filter + sort logic
+    // 🔹 Pagination state
+    const [page, setPage] = useState(1);
+
+    // 🔁 Reset page when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [search, genre, sortBy]);
+
+    // 🔹 Filter + sort wishlist
     const filteredWishlist = useMemo(() => {
         let list = [...wishlist];
 
-        // Search by title
+        // Search
         if (search.trim()) {
             const q = search.toLowerCase();
             list = list.filter(m =>
@@ -61,11 +71,22 @@ export default function WishlistPage({
         return list;
     }, [wishlist, search, genre, sortBy]);
 
+    // 🔹 Pagination math
+    const totalPages = Math.max(
+        1,
+        Math.ceil(filteredWishlist.length / PAGE_SIZE)
+    );
+
+    const pagedWishlist = useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filteredWishlist.slice(start, start + PAGE_SIZE);
+    }, [filteredWishlist, page]);
+
     return (
         <div className="container-max">
-            {/* 🔍 Wishlist-only controls */}
-            <div className="filter-bar">
-                <div className="flex-gap-8 flex-center" style={{ marginBottom: 14 }}>
+            {/* 🔍 Wishlist controls */}
+            <div className="filter-bar" style={{ marginBottom: 14 }}>
+                <div className="flex-gap-8 flex-center">
                     <input
                         className="search-bar"
                         placeholder="Search wishlist..."
@@ -98,7 +119,7 @@ export default function WishlistPage({
             </div>
 
             {/* 📌 Wishlist items */}
-            {filteredWishlist.map(item => (
+            {pagedWishlist.map(item => (
                 <WishlistRow
                     key={item.id}
                     item={item}
@@ -107,6 +128,45 @@ export default function WishlistPage({
                     onMoveToWatched={() => onMoveToWatched(item)}
                 />
             ))}
+
+            {/* 📄 Pagination */}
+            {totalPages > 1 && (
+                <div className="pagination">
+                    <button
+                        className="page-btn"
+                        disabled={page === 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                        ‹
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p =>
+                            p === 1 ||
+                            p === totalPages ||
+                            Math.abs(p - page) <= 1
+                        )
+                        .map(p => (
+                            <button
+                                key={p}
+                                className={`page-btn ${p === page ? "active" : ""}`}
+                                onClick={() => setPage(p)}
+                            >
+                                {p}
+                            </button>
+                        ))}
+
+                    <button
+                        className="page-btn"
+                        disabled={page === totalPages}
+                        onClick={() =>
+                            setPage(p => Math.min(totalPages, p + 1))
+                        }
+                    >
+                        ›
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
