@@ -289,6 +289,8 @@ export default function App() {
 
       setWishlist(p => [newItem, ...p]);
     }
+    // Remove from watched if present
+    setWatched(p => p.filter(w => w.id !== m.id));
   };
 
   const removeFromWatched = (id) => setWatched(p => p.filter(x => x.id !== id));
