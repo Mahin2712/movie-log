@@ -13,7 +13,7 @@ import WishlistRow from "./components/WishlistRow.jsx";
 import SettingsModal from "./components/SettingsModal.jsx";
 
 /* ---------- import/export helpers ------------------------ */
-import { handleImportFile, exportWatched } from "./utils/ImportExport";
+import { handleImportFile, exportWatched, exportWishlist } from "./utils/ImportExport";
 
 /* ---------- All Page ------------------------ */
 import AllPage from "./pages/AllPage.jsx";
@@ -594,9 +594,10 @@ export default function App() {
               TMDB_BASE
             })
           }
+          onExportWatched={() => exportWatched({ watched, ratings })}
+          onExportWishlist={() => exportWishlist({ wishlist })}
           onClose={() => setShowSettings(false)}
         />
-
       )}
 
 
