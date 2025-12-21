@@ -454,8 +454,17 @@ export default function App() {
           popular={popular}
           carouselRef={carouselRef}
           scrollCarousel={scrollCarousel}
+          isWatched={(id) => watched.some(m => m.id === id)}
+          isWishlisted={(id) => wishlist.some(m => m.id === id)}
+          onAddWatched={markWatched}
+          onToggleWishlist={(movie) =>
+            wishlist.some(w => w.id === movie.id)
+              ? removeFromWishlist(movie.id)
+              : addWishlist(movie)
+          }
         />
       )}
+
 
 
       {activeTab === "all" && !isSearchingMain && recommended.length > 0 && (

@@ -178,6 +178,7 @@ body {
   overflow-x: auto;
   scroll-behavior: smooth;
   padding-bottom: 6px;
+  align-items: flex-start;
 }
 
 .carousel::-webkit-scrollbar {
@@ -782,3 +783,174 @@ select:-moz-focusring {
   justify-content: flex-end;
 }
 
+/* ---------- Carousel card: stable size, scale on hover (no reflow) ---------- */
+.carousel {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 12px 0 20px;
+  align-items: center; /* center cards vertically */
+}
+
+.carousel-card {
+  flex: 0 0 auto;
+  width: 160px;               /* stable base width */
+  height: auto;              /* stable base height */
+  border-radius: 12px;
+  background: var(--card-bg, linear-gradient(180deg, #0e1830, #081026));
+  overflow: visible;          /* allow overlay to escape without breaking flow */
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transform-origin: center center;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Poster: fixed area on top */
+.carousel-card img {
+  width: 100%;
+  height: 240px;              /* poster visible area */
+  object-fit: cover;
+  display: block;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+/* reveal area anchored to bottom and overlays */
+.carousel-card-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px;
+  background: linear-gradient(
+    to top,
+    rgba(6,10,20,0.95),
+    rgba(6,10,20,0.6),
+    transparent
+  );
+  border-radius: 0 0 12px 12px;
+
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+
+
+/* Show the body on hover (overlay) */
+.carousel-card:hover {
+  transform: scaleX(1.12) scaleY(1.03);
+  z-index: 10;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+}
+
+.carousel-card:hover .carousel-card-body {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* small body typography */
+.carousel-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carousel-rating {
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+/* Keep the action buttons inside overlay tidy */
+.carousel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: flex-start;
+}
+.carousel-actions .btn {
+  flex: 1;
+  padding: 8px 8px;
+  font-size: 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: #cfe1ff;
+  border: 1px solid rgba(255,255,255,0.12);
+  transition: all 0.2s ease;
+}
+.carousel-actions .btn:not(:disabled):hover {
+  background: rgba(90,140,255,0.22);
+  border-color: rgba(120,160,255,0.45);
+}
+.carousel-actions .btn-filled {
+  background: linear-gradient(135deg, #5a8cff, #3b6cff);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 16px rgba(70,110,255,0.35);
+}
+.carousel-actions .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* subtle outline on hover */
+.carousel-card:hover {
+  outline: 1px solid rgba(100,140,255,0.18);
+}
+
+/* keep arrows aligned vertically centered irrespective of card hover */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+}
+
+
+/* responsive tweak: narrower screens */
+@media (max-width: 900px) {
+  .carousel-card { width: 140px; height: 260px; }
+  .carousel-card img { height: 180px; }
+  .carousel-card:hover { transform: scale(1.08); }
+}
+.carousel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center; /* 🔥 */
+}
+.carousel-arrow.left {
+  left: -18px;
+}
+.carousel-arrow.right {
+  right: -18px;
+}
+.carousel:hover .carousel-card:not(:hover) {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+.carousel-card-title {
+  font-weight: 600;
+  font-size: .9rem;
+  line-height: 1.25;
+  color: #ffffff;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.carousel-card img {
+  transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+.carousel-card:hover img {
+  transform: scale(1.03);
+  filter: brightness(0.90);
+}
