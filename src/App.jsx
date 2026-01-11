@@ -1,4 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useMediaStore } from "./state/useMediaStore";
+import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
+import PageWrapper from "./components/PageWrapper";
+
 
 /* ------------------------ MovieRow ------------------------ */
 import MovieRow from "./components/MovieRow.jsx";
@@ -49,6 +54,17 @@ export default function App() {
   const [apiKey, setApiKey] = useState(
     () => localStorage.getItem("movieApp_apiKey") || ""
   );
+  // Media Store
+  const {
+    media,
+    addMedia,
+    updateStatus,
+    rateMedia,
+    removeMedia,
+    importMedia
+  } = useMediaStore();
+  console.log("Media v2:", media);
+
 
   // Discovery / main content
   const [popular, setPopular] = useState([]);
@@ -56,6 +72,8 @@ export default function App() {
   const [mainSearch, setMainSearch] = useState("");
   const [loadingDiscover, setLoadingDiscover] = useState(false);
 
+  const [headerSearch, setHeaderSearch] = useState("");
+  const [mediaType, setMediaType] = useState("all"); // all | movie | tv
 
 
 
@@ -380,228 +398,99 @@ export default function App() {
 
 
   return (
-    <div className={isSearchingMain ? "search-active" : ""}>
-      {/* header */}
-      <div className="app-header container-max">
-        <div className="flex-gap-12 flex-center">
-          <div className="app-title">
-            <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-              Movie Log
-            </h1>
-            <span>keep track of what you watch</span>
-          </div>
+    <div className="flex h-screen bg-zinc-950 text-zinc-100">
+      {/* Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
 
-          <div
-            className="nav-tabs"
-            role="tablist"
-            aria-label="tabs"
-            style={{ marginLeft: 8 }}
-          >
-            <button
-              className={`tab ${activeTab === "all" ? "active" : ""}`}
-              onClick={() => { exitSearchMode(); setActiveTab("all"); }}
-            >
-              All
-            </button>
-
-            <button
-              className={`tab ${activeTab === "watchlist" ? "active" : ""}`}
-              onClick={() => { exitSearchMode(); setActiveTab("watchlist"); }}
-            >
-              Watchlist
-            </button>
-
-            <button
-              className={`tab ${activeTab === "wishlist" ? "active" : ""}`}
-              onClick={() => { exitSearchMode(); setActiveTab("wishlist"); }}
-            >
-              Wishlist
-            </button>
-
-            <button
-              className={`tab ${activeTab === "insights" ? "active" : ""}`}
-              onClick={() => { exitSearchMode(); setActiveTab("insights"); }}
-            >
-              Insights
-            </button>
-          </div>
-
-        </div>
-
-        <div className="flex-gap-12 flex-center">
-          <input
-            className="search-bar"
-            placeholder="Search movies..."
-            value={mainSearch}
-            onChange={(e) => setMainSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") runMainSearch(mainSearch); }}
-          />
-          <div style={{ textAlign: "right" }}>
-            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Watched:</div>
-            <div style={{ fontWeight: 700, marginTop: 2 }}>{watched.length}</div>
-          </div>
-
-          <button className="btn" title="Settings" onClick={() => setShowSettings(true)} style={{ marginLeft: 8 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 0 1 2.3 16.9l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 0 1 6.7 2.3l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c.09.6.56 1.09 1.16 1.28.7.24 1.39-.06 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06c-.27.43-.57 1.12-.33 1.82.19.6.68 1.07 1.28 1.16H21a2 2 0 0 1 0 4h-.09c-.6.09-1.09.56-1.28 1.16z"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* All Page */}
-      {activeTab === "all" && (
-        <AllPage
-          popular={popular}
-          carouselRef={carouselRef}
-          scrollCarousel={scrollCarousel}
-          isWatched={(id) => watched.some(m => m.id === id)}
-          isWishlisted={(id) => wishlist.some(m => m.id === id)}
-          onAddWatched={markWatched}
-          onToggleWishlist={(movie) =>
-            wishlist.some(w => w.id === movie.id)
-              ? removeFromWishlist(movie.id)
-              : addWishlist(movie)
-          }
+      {/* Main area */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Header */}
+        <Header
+          title="Movie-Log v2"
+          search={headerSearch}
+          setSearch={setHeaderSearch}
+          mediaType={mediaType}
+          setMediaType={setMediaType}
+          onOpenSettings={() => setShowSettings(true)}
         />
-      )}
 
-
-
-      {activeTab === "all" && !isSearchingMain && recommended.length > 0 && (
-        <div className="container-max" style={{ marginTop: 26 }}>
-          <div className="carousel-title">
-            Recommended for you
-          </div>
-
-          <div className="grid-gap-12">
-            {recommended.map(m => (
-              <MovieRow
-                key={m.id}
-                movie={m}
-                genresMap={genresMap}
-                isWatched={isWatched(m.id)}
-                isWishlisted={isWishlisted(m.id)}
-                onMarkWatched={() => markWatched(m)}
-                onToggleWishlist={() => {
-                  isWishlisted(m.id)
-                    ? removeFromWishlist(m.id)
-                    : addWishlist(m);
-                }}
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          {activeTab === "all" && (
+            <PageWrapper title="Discover">
+              <AllPage
+                popular={popular}
+                carouselRef={carouselRef}
+                scrollCarousel={scrollCarousel}
+                isWatched={isWatched}
+                isWishlisted={isWishlisted}
+                onAddWatched={markWatched}
+                onToggleWishlist={(movie) =>
+                  isWishlisted(movie.id)
+                    ? removeFromWishlist(movie.id)
+                    : addWishlist(movie)
+                }
               />
-            ))}
-          </div>
-        </div>
-      )}
+            </PageWrapper>
+          )}
 
+          {activeTab === "watchlist" && (
+            <PageWrapper title="Your Watchlist">
+              <WatchlistPage
+                watched={displayedWatchlist}
+                genresMap={genresMap}
+                ratings={ratings}
+                onRemove={removeFromWatched}
+                onRate={setRating}
+                onMoveToWishlist={addWishlist}
+              />
+            </PageWrapper>
+          )}
 
-      {/* main content */}
-      <div className="container-max" style={{ marginTop: 20 }}>
-        {/* search results */}
-        {isSearchingMain ? (
-          <div className="mt-8">
-            <div className="text-muted mb-10">
-              Showing search results for <strong>"{mainSearch}"</strong>
-              &nbsp;&nbsp;
-              <button className="btn" style={{ marginLeft: 8 }} onClick={() => { setMainSearch(""); setDiscoverResults([]); }}>Clear</button>
-            </div>
+          {activeTab === "wishlist" && (
+            <PageWrapper title="Your Wishlist">
+              <WishlistPage
+                wishlist={displayedWishlist}
+                genresMap={genresMap}
+                onRemove={removeFromWishlist}
+                onMoveToWatched={markWatched}
+              />
+            </PageWrapper>
+          )}
 
-            {loadingDiscover ? <div style={{ color: "var(--text-muted)" }}>Loading…</div> : (
-              <div className="grid-gap-14">
-                {(discoverResults || []).map(m => (
-                  <MovieRow
-                    key={m.id}
-                    movie={m}
-                    genresMap={genresMap}
-                    isWatched={isWatched(m.id)}
-                    isWishlisted={isWishlisted(m.id)}
-                    onMarkWatched={() => markWatched(m)}
-                    onToggleWishlist={() => {
-                      isWishlisted(m.id)
-                        ? removeFromWishlist(m.id)
-                        : addWishlist(m);
-                    }} />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : null}
+          {activeTab === "insights" && (
+            <PageWrapper title="Insights">
+              <InsightsPage stats={watchStats} />
+            </PageWrapper>
+          )}
+          {showSettings && (
+            <SettingsModal
+              apiKey={apiKey}
+              setApiKey={setApiKey}
+              autoRefresh={refreshMins}
+              setAutoRefresh={setRefreshMins}
+              onImport={(file) =>
+                handleImportFile({
+                  file,
+                  apiKey,
+                  watched,
+                  setWatched,
+                  TMDB_BASE
+                })
+              }
+              onExportWatched={() => exportWatched({ watched, ratings })}
+              onExportWishlist={() => exportWishlist({ wishlist })}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
 
-        {/* watchlist / wishlist panel */}
-        {activeTab !== "all" && (
-          <div className="mt-18">
-
-            <div className="mt-14">
-              {activeTab === "watchlist" && displayedWatchlist.length === 0 && (
-                <div className="card" style={{ padding: 16, color: "var(--text-muted)" }}>No items in watchlist.</div>
-              )}
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
-                {activeTab === "watchlist" && (
-                  <WatchlistPage
-                    watched={displayedWatchlist}
-                    genresMap={genresMap}
-                    ratings={ratings}
-                    onRemove={removeFromWatched}
-                    onRate={setRating}
-                    onMoveToWishlist={addWishlist}
-                  />
-                )}
-
-
-                {activeTab === "wishlist" && (
-                  <WishlistPage
-                    wishlist={displayedWishlist}
-                    genresMap={genresMap}
-                    onRemove={removeFromWishlist}
-                    onMoveToWatched={markWatched}
-                  />
-                )}
-
-                {activeTab === "insights" && (
-                  <InsightsPage
-                    stats={watchStats}
-                    wishlist={wishlist}
-                  />
-                )}
-
-
-
-
-
-              </div>
-            </div>
-          </div>
-        )}
-
+        </main>
 
       </div>
-
-      {/* settings modal */}
-      {showSettings && (
-        <SettingsModal
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          autoRefresh={refreshMins}
-          setAutoRefresh={setRefreshMins}
-          onImport={(file) =>
-            handleImportFile({
-              file,
-              apiKey,
-              watched,
-              setWatched,
-              TMDB_BASE
-            })
-          }
-          onExportWatched={() => exportWatched({ watched, ratings })}
-          onExportWishlist={() => exportWishlist({ wishlist })}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-
-
-      <div style={{ height: 28 }} />
     </div>
   );
+
 }
