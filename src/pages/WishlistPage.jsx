@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import WishlistRow from "../components/WishlistRow";
+import MediaCard from "../components/MediaCard";
+import MediaGridCard from "../components/MediaGridCard";
 
 const PAGE_SIZE = 12; // 🔧 change to 10 / 16 if you want
 
@@ -82,6 +83,9 @@ export default function WishlistPage({
         return filteredWishlist.slice(start, start + PAGE_SIZE);
     }, [filteredWishlist, page]);
 
+    // 🔹 View mode state
+    const [viewMode, setViewMode] = useState("list");
+
     return (
         <div className="container-max">
             {/* 🔍 Wishlist controls */}
@@ -115,19 +119,60 @@ export default function WishlistPage({
                         <option value="az">A → Z</option>
                         <option value="za">Z → A</option>
                     </select>
+
+                    {/* View mode toggle (optional, simple) */}
+                    <button
+                        className={`view-toggle-btn${viewMode === "list" ? " active" : ""}`}
+                        onClick={() => setViewMode("list")}
+                        aria-label="List view"
+                        type="button"
+                    >
+                        📄
+                    </button>
+                    <button
+                        className={`view-toggle-btn${viewMode === "grid" ? " active" : ""}`}
+                        onClick={() => setViewMode("grid")}
+                        aria-label="Grid view"
+                        type="button"
+                    >
+                        🟦
+                    </button>
                 </div>
             </div>
 
-            {/* 📌 Wishlist items */}
-            {pagedWishlist.map(item => (
-                <WishlistRow
-                    key={item.id}
-                    item={item}
-                    genresMap={genresMap}
-                    onRemove={() => onRemove(item.id)}
-                    onMoveToWatched={() => onMoveToWatched(item)}
-                />
-            ))}
+            {/* 📌 Wishlist items: grid or list */}
+            {viewMode === "grid" ? (
+                <div
+                    className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]"
+                >
+                    {pagedWishlist.map(item => {
+                        const daysAgo = item.dateAdded
+                            ? Math.floor(
+                                (Date.now() - new Date(item.dateAdded)) / 86400000
+                              )
+                            : null;
+
+                        return (
+                            <MediaGridCard
+                                key={item.id}
+                                item={item}
+                                daysAgo={daysAgo}
+                            />
+                        );
+                    })}
+                </div>
+            ) : (
+                pagedWishlist.map(item => (
+                    <MediaCard
+                        key={item.id}
+                        item={item}
+                        status="wishlist"
+                        genresMap={genresMap}
+                        onWatch={onMoveToWatched}
+                        onRemove={onRemove}
+                    />
+                ))
+            )}
 
             {/* 📄 Pagination */}
             {totalPages > 1 && (

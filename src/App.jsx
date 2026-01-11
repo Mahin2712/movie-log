@@ -74,6 +74,7 @@ export default function App() {
 
   const [headerSearch, setHeaderSearch] = useState("");
   const [mediaType, setMediaType] = useState("all"); // all | movie | tv
+  const [viewMode, setViewMode] = useState("list"); // list | grid
 
 
 
@@ -102,13 +103,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
 
   // Import option from JSON/CSV
-
-
-
-
-
-
-
 
   // Genres (map id -> name) and keep also an array for selects
   const [genresMap, setGenresMap] = useState({});
@@ -415,6 +409,8 @@ export default function App() {
           mediaType={mediaType}
           setMediaType={setMediaType}
           onOpenSettings={() => setShowSettings(true)}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
 
         {/* Page content */}

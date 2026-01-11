@@ -4,6 +4,8 @@ export default function Header({
   setSearch,
   mediaType,
   setMediaType,
+  viewMode,
+  setViewMode,
   onOpenSettings
 }) {
   return (
@@ -35,16 +37,34 @@ export default function Header({
               key={t}
               onClick={() => setMediaType(t)}
               className={`px-3 py-1 text-sm rounded-full transition
-                ${
-                  mediaType === t
-                    ? "bg-blue-500 text-white"
-                    : "text-zinc-300 hover:bg-zinc-700"
+                ${mediaType === t
+                  ? "bg-blue-500 text-white"
+                  : "text-zinc-300 hover:bg-zinc-700"
                 }`}
             >
               {t === "all" ? "All" : t === "movie" ? "🎬" : "📺"}
             </button>
           ))}
         </div>
+
+        <div className="flex bg-zinc-800 rounded-full p-1">
+          {["list", "grid"].map(v => (
+            <button
+              key={v}
+              onClick={() => setViewMode(v)}
+              className={`
+        px-3 py-1 text-sm rounded-full transition
+        ${viewMode === v
+                  ? "bg-blue-500 text-white"
+                  : "text-zinc-300 hover:bg-zinc-700"
+                }
+      `}
+            >
+              {v === "list" ? "☰" : "⬛"}
+            </button>
+          ))}
+        </div>
+
 
         {/* Settings */}
         <button
