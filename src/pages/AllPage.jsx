@@ -1,6 +1,8 @@
 import { IMG_BASE } from "../utils/constants";
+import MediaGridCard from "../components/MediaGridCard";
 
 export default function AllPage({
+  viewMode = "list",
   popular,
   carouselRef,
   scrollCarousel,
@@ -13,69 +15,83 @@ export default function AllPage({
     <section className="carousel-section container-max">
       <h2 className="carousel-title">Popular / Now Playing</h2>
 
-      <div className="carousel-wrapper">
-        <button
-          className="carousel-arrow left"
-          onClick={() => scrollCarousel("left")}
+      {viewMode === "grid" ? (
+        <div
+          className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]"
         >
-          ◀
-        </button>
+          {popular.map(movie => (
+            <MediaGridCard
+              key={movie.id}
+              item={movie}
+              daysAgo={null}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="carousel-wrapper">
+          <button
+            className="carousel-arrow left"
+            onClick={() => scrollCarousel("left")}
+          >
+            ◀
+          </button>
 
-        <div ref={carouselRef} className="carousel">
-          {popular.map(movie => {
-            const watched = isWatched(movie.id);
-            const wishlisted = isWishlisted(movie.id);
+          <div ref={carouselRef} className="carousel">
+            {popular.map(movie => {
+              const watched = isWatched(movie.id);
+              const wishlisted = isWishlisted(movie.id);
 
-            return (
-              <div key={movie.id} className="carousel-card">
-                <img
-                  src={movie.poster_path ? IMG_BASE + movie.poster_path : ""}
-                  alt={movie.title}
-                />
+              return (
+                <div key={movie.id} className="carousel-card">
+                  <img
+                    src={movie.poster_path ? IMG_BASE + movie.poster_path : ""}
+                    alt={movie.title}
+                  />
 
-                <div className="carousel-card-body">
-                  <div className="carousel-card-title">
-                    {movie.title}
-                  </div>
-
-                  {movie.vote_average > 0 && (
-                    <div className="carousel-rating">
-                      ★ {movie.vote_average.toFixed(1)}
+                  <div className="carousel-card-body">
+                    <div className="carousel-card-title">
+                      {movie.title}
                     </div>
-                  )}
 
-                  <div className="carousel-actions">
-                    {/* ADD TO WATCHED */}
-                    <button
-                      className={`btn ${watched ? "btn-filled" : ""}`}
-                      disabled={watched}
-                      onClick={() => onAddWatched(movie)}
-                    >
-                      {watched ? "✓ Watched" : "+ Watchlist"}
-                    </button>
+                    {movie.vote_average > 0 && (
+                      <div className="carousel-rating">
+                        ★ {movie.vote_average.toFixed(1)}
+                      </div>
+                    )}
 
-                    {/* ADD TO WISHLIST */}
-                    <button
-                      className={`btn ${wishlisted ? "btn-filled" : ""}`}
-                      disabled={watched || wishlisted}
-                      onClick={() => onToggleWishlist(movie)}
-                    >
-                      {wishlisted ? "♥" : "♡"}
-                    </button>
+                    <div className="carousel-actions">
+                      {/* ADD TO WATCHED */}
+                      <button
+                        className={`btn ${watched ? "btn-filled" : ""}`}
+                        disabled={watched}
+                        onClick={() => onAddWatched(movie)}
+                      >
+                        {watched ? "✓ Watched" : "+ Watchlist"}
+                      </button>
+
+                      {/* ADD TO WISHLIST */}
+                      <button
+                        className={`btn ${wishlisted ? "btn-filled" : ""}`}
+                        disabled={watched || wishlisted}
+                        onClick={() => onToggleWishlist(movie)}
+                      >
+                        {wishlisted ? "♥" : "♡"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        <button
-          className="carousel-arrow right"
-          onClick={() => scrollCarousel("right")}
-        >
-          ▶
-        </button>
-      </div>
+          <button
+            className="carousel-arrow right"
+            onClick={() => scrollCarousel("right")}
+          >
+            ▶
+          </button>
+        </div>
+      )}
     </section>
   );
 }

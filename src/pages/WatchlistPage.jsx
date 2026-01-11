@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import WatchedRow from "../components/WatchedRow";
+import MediaGridCard from "../components/MediaGridCard";
 
 const ITEMS_PER_PAGE = 15; // tweak: 10 / 12 / 15
 
 export default function WatchlistPage({
     watched,
+    viewMode,
     genresMap,
     ratings,
     onRemove,
@@ -86,6 +88,8 @@ export default function WatchlistPage({
     /* ----------------------------------------
        RENDER
     ---------------------------------------- */
+        // viewMode is received as a prop. Do not redeclare it.
+
     return (
         <div className="container-max watchlist-page">
             {/* 🔍 FILTER BAR */}
@@ -117,22 +121,45 @@ export default function WatchlistPage({
                 </button>
             </div>
 
-            {/* 🎬 MOVIES */}
+            {/* 🎬 MOVIES: grid or list view */}
             {paginatedWatched.length === 0 && (
                 <div className="empty-state">No movies found</div>
             )}
 
-            {paginatedWatched.map(w => (
-                <WatchedRow
-                    key={w.id}
-                    item={w}
-                    genresMap={genresMap}
-                    rating={ratings[w.id] || ""}
-                    onSetRating={(v) => onRate(w.id, v)}
-                    onRemove={() => onRemove(w.id)}
-                    onMoveToWishlist={() => onMoveToWishlist(w)}
-                />
-            ))}
+            {viewMode === "grid" ? (
+                <div
+                    className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]"
+                >
+                    {paginatedWatched.map(item => {
+                        const daysAgo = item.dateAdded
+                            ? Math.floor(
+                                (Date.now() - new Date(item.dateAdded)) / 86400000
+                              )
+                            : null;
+                        return (
+                            <MediaGridCard
+                                key={item.id}
+                                item={item}
+                                daysAgo={daysAgo}
+                            />
+                        );
+                    })}
+                </div>
+            ) : (
+                <>
+                    {paginatedWatched.map(w => (
+                        <WatchedRow
+                            key={w.id}
+                            item={w}
+                            genresMap={genresMap}
+                            rating={ratings[w.id] || ""}
+                            onSetRating={(v) => onRate(w.id, v)}
+                            onRemove={() => onRemove(w.id)}
+                            onMoveToWishlist={() => onMoveToWishlist(w)}
+                        />
+                    ))}
+                </>
+            )}
 
             {/* 📄 PAGINATION */}
             {totalPages > 1 && (

@@ -418,6 +418,7 @@ export default function App() {
           {activeTab === "all" && (
             <PageWrapper title="Discover">
               <AllPage
+                viewMode={viewMode}
                 popular={popular}
                 carouselRef={carouselRef}
                 scrollCarousel={scrollCarousel}
@@ -436,6 +437,7 @@ export default function App() {
           {activeTab === "watchlist" && (
             <PageWrapper title="Your Watchlist">
               <WatchlistPage
+                viewMode={viewMode}
                 watched={displayedWatchlist}
                 genresMap={genresMap}
                 ratings={ratings}
@@ -449,6 +451,7 @@ export default function App() {
           {activeTab === "wishlist" && (
             <PageWrapper title="Your Wishlist">
               <WishlistPage
+                viewMode={viewMode}
                 wishlist={displayedWishlist}
                 genresMap={genresMap}
                 onRemove={removeFromWishlist}

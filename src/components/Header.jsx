@@ -48,21 +48,23 @@ export default function Header({
         </div>
 
         <div className="flex bg-zinc-800 rounded-full p-1">
-          {["list", "grid"].map(v => (
-            <button
-              key={v}
-              onClick={() => setViewMode(v)}
-              className={`
-        px-3 py-1 text-sm rounded-full transition
-        ${viewMode === v
-                  ? "bg-blue-500 text-white"
-                  : "text-zinc-300 hover:bg-zinc-700"
-                }
-      `}
-            >
-              {v === "list" ? "☰" : "⬛"}
-            </button>
-          ))}
+          <button
+            onClick={() =>
+              setViewMode(viewMode === "list" ? "grid" : "list")
+            }
+            className="
+                    px-4 py-1.5
+                    rounded-full
+                    text-sm font-medium
+                    bg-zinc-800
+                    text-zinc-200
+                    hover:bg-zinc-700
+                    transition
+                  "
+          >
+            {viewMode === "list" ? "List View" : "Grid View"}
+          </button>
+
         </div>
 
 

@@ -5,6 +5,7 @@ import MediaGridCard from "../components/MediaGridCard";
 const PAGE_SIZE = 12; // 🔧 change to 10 / 16 if you want
 
 export default function WishlistPage({
+    viewMode,
     wishlist,
     genresMap,
     onRemove,
@@ -83,8 +84,7 @@ export default function WishlistPage({
         return filteredWishlist.slice(start, start + PAGE_SIZE);
     }, [filteredWishlist, page]);
 
-    // 🔹 View mode state
-    const [viewMode, setViewMode] = useState("list");
+
 
     return (
         <div className="container-max">
@@ -119,24 +119,6 @@ export default function WishlistPage({
                         <option value="az">A → Z</option>
                         <option value="za">Z → A</option>
                     </select>
-
-                    {/* View mode toggle (optional, simple) */}
-                    <button
-                        className={`view-toggle-btn${viewMode === "list" ? " active" : ""}`}
-                        onClick={() => setViewMode("list")}
-                        aria-label="List view"
-                        type="button"
-                    >
-                        📄
-                    </button>
-                    <button
-                        className={`view-toggle-btn${viewMode === "grid" ? " active" : ""}`}
-                        onClick={() => setViewMode("grid")}
-                        aria-label="Grid view"
-                        type="button"
-                    >
-                        🟦
-                    </button>
                 </div>
             </div>
 
