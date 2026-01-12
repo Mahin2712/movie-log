@@ -81,7 +81,7 @@ export default function MediaGridCard({
           {item.title || item.name}
         </div>
 
-        {mode === "watchlist" ? (
+        {mode === "watchlist" || mode === "wishlist" ? (
           <div className="mt-1 flex items-center gap-10 text-xs">
             {/* Release year */}
             <span className="text-zinc-400">
