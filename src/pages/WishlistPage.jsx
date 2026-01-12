@@ -131,7 +131,7 @@ export default function WishlistPage({
                         const daysAgo = item.dateAdded
                             ? Math.floor(
                                 (Date.now() - new Date(item.dateAdded)) / 86400000
-                              )
+                            )
                             : null;
 
                         return (
@@ -139,6 +139,9 @@ export default function WishlistPage({
                                 key={item.id}
                                 item={item}
                                 daysAgo={daysAgo}
+                                mode="wishlist"
+                                onMarkWatched={onMoveToWatched}
+                                onClick={() => setSelectedItem(item)}
                             />
                         );
                     })}

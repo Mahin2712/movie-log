@@ -1,6 +1,6 @@
 import { IMG_BASE } from "../utils/constants";
 
-export default function MediaGridCard({ item, daysAgo, onClick }) {
+export default function MediaGridCard({ item, daysAgo, mode,onMarkWatched, onClick }) {
   return (
     <div
       className="group relative cursor-pointer transition-transform duration-200 hover:-translate-y-1"
@@ -13,6 +13,44 @@ export default function MediaGridCard({ item, daysAgo, onClick }) {
           alt={item.title || item.name}
           className="w-full aspect-2/3 object-cover"
         />
+        {mode === "wishlist" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkWatched?.(item);
+            }}
+            className="
+      absolute top-0 left-0 z-10
+      w-11 h-11
+      overflow-hidden
+    "
+            title="Mark as watched"
+          >
+            <div
+              className="
+        absolute top-0 left-0
+        w-0 h-0
+        border-t-44
+        border-r-44
+        border-r-transparent
+        shadow-md
+      "
+              style={{ borderTopColor: "rgba(120, 120, 130, 0.85)" }}
+            />
+            <div
+              className="
+        absolute top-0 left-0
+        w-11 h-11
+        flex items-start justify-start
+        pl-1.5 pt-1.5
+        text-[14px] font-extrabold text-white
+        pointer-events-none
+      "
+            >
+              +
+            </div>
+          </button>
+        )}
 
         {/* Days-added corner */}
         {daysAgo !== null && (
