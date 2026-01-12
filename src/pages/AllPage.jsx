@@ -9,22 +9,16 @@ export default function AllPage({
   isWatched,
   isWishlisted,
   onAddWatched,
-  onToggleWishlist
+  onToggleWishlist,
 }) {
   return (
     <section className="carousel-section container-max">
       <h2 className="carousel-title">Popular / Now Playing</h2>
 
       {viewMode === "grid" ? (
-        <div
-          className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]"
-        >
-          {popular.map(movie => (
-            <MediaGridCard
-              key={movie.id}
-              item={movie}
-              daysAgo={null}
-            />
+        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
+          {popular.map((movie) => (
+            <MediaGridCard key={movie.id} item={movie} daysAgo={null} />
           ))}
         </div>
       ) : (
@@ -37,7 +31,7 @@ export default function AllPage({
           </button>
 
           <div ref={carouselRef} className="carousel">
-            {popular.map(movie => {
+            {popular.map((movie) => {
               const watched = isWatched(movie.id);
               const wishlisted = isWishlisted(movie.id);
 
@@ -49,9 +43,7 @@ export default function AllPage({
                   />
 
                   <div className="carousel-card-body">
-                    <div className="carousel-card-title">
-                      {movie.title}
-                    </div>
+                    <div className="carousel-card-title">{movie.title}</div>
 
                     {movie.vote_average > 0 && (
                       <div className="carousel-rating">

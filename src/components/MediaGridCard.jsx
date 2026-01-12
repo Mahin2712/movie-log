@@ -1,6 +1,12 @@
 import { IMG_BASE } from "../utils/constants";
 
-export default function MediaGridCard({ item, daysAgo, mode,onMarkWatched, onClick }) {
+export default function MediaGridCard({
+  item,
+  daysAgo,
+  mode,
+  onMarkWatched,
+  onClick,
+}) {
   return (
     <div
       className="group relative cursor-pointer transition-transform duration-200 hover:-translate-y-1"
@@ -53,7 +59,7 @@ export default function MediaGridCard({ item, daysAgo, mode,onMarkWatched, onCli
         )}
 
         {/* Days-added corner */}
-        {daysAgo !== null && (
+        {mode === "wishlist" && daysAgo !== null && (
           <div className="absolute top-0 right-0 w-11 h-11 overflow-hidden">
             {/* Triangle */}
             <div
@@ -74,10 +80,32 @@ export default function MediaGridCard({ item, daysAgo, mode,onMarkWatched, onCli
         <div className="text-sm font-semibold leading-tight line-clamp-2">
           {item.title || item.name}
         </div>
-        <div className="text-xs text-zinc-400 mt-0.5">
-          {item.release_date?.slice(0, 4) ||
-            item.first_air_date?.slice(0, 4)}
-        </div>
+
+        {mode === "watchlist" ? (
+          <div className="mt-1 flex items-center gap-10 text-xs">
+            {/* Release year */}
+            <span className="text-zinc-400">
+              {item.release_date?.slice(0, 4) ||
+                item.first_air_date?.slice(0, 4)}
+            </span>
+
+            {/* Days info */}
+            {daysAgo < 1 ? (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">
+                New
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full bg-zinc-700/50 text-zinc-200">
+                {daysAgo} {daysAgo > 1 ? "days ago" : "day ago"}
+              </span>
+            )}
+          </div>
+        ) : (
+          /* Wishlist grid keeps old behavior */
+          <p className="mt-1 text-xs text-zinc-400">
+            {item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4)}
+          </p>
+        )}
       </div>
     </div>
   );
