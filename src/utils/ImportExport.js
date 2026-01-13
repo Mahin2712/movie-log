@@ -3,19 +3,11 @@ export function exportWishlist({ wishlist }) {
     app: "movie-log",
     version: 2,
     exportedAt: new Date().toISOString(),
-    type: "wishlist",
-    movies: wishlist.map(w => ({
-      tmdb_id: w.tmdb_id || w.id,
-      title: w.title,
-      release_year: w.release_date?.slice(0, 4) || null,
-      dateAdded: w.dateAdded || null
-    }))
+    items: wishlist.map(w => ({ ...w })),
   };
-
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json"
   });
-
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -127,7 +119,8 @@ export async function handleImportFile({
 
   if (file.name.endsWith(".json")) {
     const data = JSON.parse(text);
-    items = data.movies || data;
+    // Support both old (movies) and new (items) formats
+    items = data.items || data.movies || data;
   } else if (file.name.endsWith(".csv")) {
     const [header, ...rows] = text.split("\n");
     const keys = header.split(",");
@@ -156,20 +149,11 @@ export function exportWatched({ watched, ratings }) {
     app: "movie-log",
     version: 2,
     exportedAt: new Date().toISOString(),
-    type: "watched",
-    movies: watched.map(w => ({
-      tmdb_id: w.tmdb_id || w.id,
-      title: w.title,
-      release_year: w.release_date?.slice(0, 4) || null,
-      rating: ratings[w.id] || null,
-      dateAdded: w.dateAdded || null
-    }))
+    items: watched.map(w => ({ ...w, rating: ratings[w.id] ?? w.rating ?? null })),
   };
-
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json"
   });
-
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

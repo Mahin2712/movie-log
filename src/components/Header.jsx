@@ -19,33 +19,29 @@ export default function Header({
 
       {/* CENTER: Search */}
       <div className="flex-1 flex justify-center">
-        <input
-          className="search-bar"
-          placeholder="Search movies…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ maxWidth: 520 }}
-        />
+        <div className="relative w-full max-w-xl">
+          <input
+            className="search-bar w-full pr-10" // added padding right for X
+            placeholder="Search movies or TV shows..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-600 border border-zinc-600 transition"
+              onClick={() => setSearch("")} // Clears input, App effect handles exit
+              aria-label="Clear search"
+            >
+              <span className="text-sm leading-none pb-0.5">×</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* RIGHT: Actions */}
       <div className="flex items-center gap-2">
-        {/* Media type toggle (UI only for now) */}
-        <div className="flex bg-zinc-800 rounded-full p-1">
-          {["all", "movie", "tv"].map(t => (
-            <button
-              key={t}
-              onClick={() => setMediaType(t)}
-              className={`px-3 py-1 text-sm rounded-full transition
-                ${mediaType === t
-                  ? "bg-blue-500 text-white"
-                  : "text-zinc-300 hover:bg-zinc-700"
-                }`}
-            >
-              {t === "all" ? "All" : t === "movie" ? "🎬" : "📺"}
-            </button>
-          ))}
-        </div>
+        {/* Media type toggle - HIDDEN in favor of local search filters */}
+        {/* <div className="flex bg-zinc-800 rounded-full p-1">...</div> */}
 
         <div className="flex bg-zinc-800 rounded-full p-1">
           <button

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import FilterBar from "../components/FilterBar";
 import MediaCard from "../components/MediaCard";
 import MediaGridCard from "../components/MediaGridCard";
 
@@ -11,6 +12,8 @@ export default function WishlistPage({
   onRemove,
   onMoveToWatched,
 }) {
+  // Media type filter
+  const [mediaFilter, setMediaFilter] = useState("all");
   // 🔹 Wishlist-only UI state
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("all");
@@ -27,6 +30,11 @@ export default function WishlistPage({
   // 🔹 Filter + sort wishlist
   const filteredWishlist = useMemo(() => {
     let list = [...wishlist];
+
+    // Media type filter
+    if (mediaFilter !== "all") {
+      list = list.filter((m) => (m.media_type || "movie") === mediaFilter);
+    }
 
     // Search
     if (search.trim()) {
@@ -61,7 +69,7 @@ export default function WishlistPage({
     }
 
     return list;
-  }, [wishlist, search, genre, sortBy]);
+  }, [wishlist, mediaFilter, search, genre, sortBy]);
 
   // 🔹 Pagination math
   const totalPages = Math.max(
@@ -76,33 +84,39 @@ export default function WishlistPage({
 
   return (
     <div className="container-max">
-      {/* 🔍 Wishlist controls */}
-      <div className="filter-bar" style={{ marginBottom: 14 }}>
-        <div className="flex-gap-8 flex-center">
-          <input
-            className="search-bar"
-            placeholder="Search wishlist..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-
-          <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-            <option value="all">All genres</option>
-            {Object.entries(genresMap).map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="az">A → Z</option>
-            <option value="za">Z → A</option>
-          </select>
-        </div>
-      </div>
+      {/* FILTER BAR */}
+      <FilterBar
+        mediaFilter={mediaFilter}
+        setMediaFilter={setMediaFilter}
+        search={search}
+        setSearch={setSearch}
+        genre={genre}
+        setGenre={setGenre}
+        genresMap={genresMap}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOptions={[
+          { value: "newest", label: "Newest first" },
+          { value: "oldest", label: "Oldest first" },
+          { value: "az", label: "A → Z" },
+          { value: "za", label: "Z → A" }
+        ]}
+        asc={sortBy === "oldest" || sortBy === "az"} // approximate logic for toggle visualization if needed, or just let the toggle do nothing if sorts are prescriptive? 
+      // Actually WishlistPage logic uses 'sortBy' strings directly (newest/oldest) rather than separate asc boolean. 
+      // To support the unified FilterBar, we might need to adapt.
+      // The current FilterBar expects 'asc' and 'setAsc' props.
+      // Let's check WishlistPage logic: it uses `sortBy` enum.
+      // We can pass a dummy setAsc or adapt the `sortBy` state to use boolean.
+      // For now, let's keep the `sortBy` enum dropdown as the primary control and pass a no-op for asc if not used, or hidden.
+      // BUT the design has a generic Asc/Desc button. 
+      // For Wishlist, "Newest/Oldest" implies order. 
+      // Let's just use the `sortBy` dropdown fully and maybe hide the asc toggle or make it functional.
+      // The user wants "modern looking". 
+      // Better plan: Update WishlistPage to Use standard sort field + asc boolean like WatchlistPage? 
+      // Or just map the dropdown options. 
+      // The FilterBar has `asc` prop. 
+      // I will pass `null` for setAsc to FilterBar and inside FilterBar conditionally render the button if `setAsc` is provided.
+      />
 
       {/* 📌 Wishlist items: grid or list */}
       {viewMode === "grid" ? (

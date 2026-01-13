@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useMediaStore } from "./state/useMediaStore";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
+import MediaGridCard from "./components/MediaGridCard";
 import PageWrapper from "./components/PageWrapper";
 
 /* ------------------------ MovieRow ------------------------ */
@@ -15,6 +16,7 @@ import WishlistRow from "./components/WishlistRow.jsx";
 
 /* ------------------------ SettingsModal ------------------------ */
 import SettingsModal from "./components/SettingsModal.jsx";
+import SearchResultsGrid from "./components/SearchResultsGrid.jsx";
 
 /* ---------- import/export helpers ------------------------ */
 import {
@@ -52,10 +54,97 @@ import { TMDB_BASE } from "./utils/constants.js";
 import { IMG_BASE } from "./utils/constants.js";
 
 export default function App() {
+  // --- Universal Media Model Normalizer ---
+  const normalizeMedia = useCallback((item) => {
+    // Prevent double-normalization
+    if (item.tmdb_id && item.media_type && typeof item.id === "string" && item.id.includes("_")) {
+      return item;
+    }
+
+    // Accepts TMDB movie or TV object, returns universal media object
+    const mediaType = item.media_type || (item.first_air_date ? "tv" : "movie");
+    const yearRaw = item.release_date || item.first_air_date || null;
+    let year = null;
+    if (yearRaw) {
+      year = Number(yearRaw.slice(0, 4));
+      if (!Number.isFinite(year)) year = null;
+    }
+    return {
+      id: `${item.id}_${mediaType}`,
+      tmdb_id: item.id,
+      media_type: mediaType,
+      title: item.title || item.name || "",
+      original_title: item.original_title || item.original_name || undefined,
+      year,
+      poster_path: item.poster_path || null,
+      backdrop_path: item.backdrop_path || null,
+      genres: item.genre_ids || item.genres || [],
+      overview: item.overview || "",
+      dateAdded: new Date().toISOString(),
+      rating: item.rating ?? null,
+      seasons: item.number_of_seasons || undefined,
+      episodes: item.number_of_episodes || undefined,
+    };
+  }, []);
+
   // Settings / Keys
   const [apiKey, setApiKey] = useState(
     () => localStorage.getItem("movieApp_apiKey") || ""
   );
+
+  // --- Global Search State ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("all"); // all | movie | tv
+
+  // Search effect with debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setIsSearching(false);
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    const controller = new AbortController();
+
+    const timeout = setTimeout(async () => {
+      if (!apiKey) return;
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(
+            searchQuery
+          )}`,
+          { signal: controller.signal }
+        );
+
+        const data = await res.json();
+        const normalized = (data.results || [])
+          .filter((item) => item.media_type !== "person")
+          .map(normalizeMedia);
+
+        setSearchResults(normalized);
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          console.error(e);
+          setSearchResults([]);
+        }
+      }
+    }, 400);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [searchQuery, apiKey, normalizeMedia]);
+
+  // Exit search function
+  const exitSearchMode = () => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setIsSearching(false);
+  };
   // Media Store
   const { media, addMedia, updateStatus, rateMedia, removeMedia, importMedia } =
     useMediaStore();
@@ -99,7 +188,7 @@ export default function App() {
   const [genresMap, setGenresMap] = useState({});
   const [genresArray, setGenresArray] = useState([]); // [{id, name}, ...]
 
-  // Watched/wishlist/ratings
+  // Watched/wishlist/ratings (unified media model)
   const [watched, setWatched] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("movieApp_watched") || "[]");
@@ -121,6 +210,8 @@ export default function App() {
       return {};
     }
   });
+
+
 
   // Watchlist UI: tab/search/filter/sort
   const [activeTab, setActiveTab] = useState("all"); // "all" | "watchlist" | "wishlist"
@@ -166,12 +257,6 @@ export default function App() {
   const [refreshMins, setRefreshMins] = useState(() =>
     Number(localStorage.getItem("movieApp_refreshMins") || "30")
   );
-  // Exit search mode
-  const exitSearchMode = () => {
-    setMainSearch("");
-    setDiscoverResults([]);
-  };
-
   // Persist to localStorage
   useEffect(() => {
     localStorage.setItem("movieApp_apiKey", apiKey || "");
@@ -275,46 +360,22 @@ export default function App() {
   };
 
   // ---------- helpers: watched/wishlist/ratings ----------
-  // mark as watched (store some movie data including genre ids so filters can work)
-  const markWatched = (m) => {
-    if (!watched.some((w) => w.id === m.id)) {
-      const newItem = {
-        id: m.id,
-        tmdb_id: m.id,
-        title: m.title,
-        poster_path: m.poster_path || null, // ✅ ADD THIS
-        release_date: m.release_date || null,
-        overview: m.overview || "",
-        genre_ids: m.genre_ids || [],
-        dateAdded: new Date().toISOString(),
-        rating: null,
-      };
 
-      setWatched((p) => [newItem, ...p]);
+  // --- Add to Watchlist/Wishlist using universal model ---
+  const addToWatchlist = (item) => {
+    const norm = normalizeMedia(item);
+    if (!watched.some((w) => w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)) {
+      setWatched((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type))]);
+      setWishlist((prev) => prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)));
     }
-    // remove from wishlist
-    setWishlist((p) => p.filter((w) => w.id !== m.id));
   };
 
-  // Place near other helpers in App component
-
-  const addWishlist = (m) => {
-    if (!wishlist.some((w) => w.id === m.id)) {
-      const newItem = {
-        id: m.id,
-        tmdb_id: m.id,
-        title: m.title,
-        poster_path: m.poster_path || null, // ✅ ADD THIS
-        release_date: m.release_date || null,
-        overview: m.overview || "",
-        genre_ids: m.genre_ids || [],
-        dateAdded: new Date().toISOString(),
-      };
-
-      setWishlist((p) => [newItem, ...p]);
+  const addToWishlist = (item) => {
+    const norm = normalizeMedia(item);
+    if (!wishlist.some((w) => w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)) {
+      setWishlist((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type))]);
+      setWatched((prev) => prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)));
     }
-    // Remove from watched if present
-    setWatched((p) => p.filter((w) => w.id !== m.id));
   };
 
   const removeFromWatched = (id) =>
@@ -323,10 +384,10 @@ export default function App() {
     setWishlist((p) => p.filter((x) => x.id !== id));
 
   // rating setter
-  const setRating = (movieId, value) => {
+  const setRating = (mediaId, value) => {
     setRatings((r) => ({
       ...r,
-      [movieId]: value === "" ? null : Number(value),
+      [mediaId]: value === "" ? null : Number(value),
     }));
   };
 
@@ -391,20 +452,22 @@ export default function App() {
   const isSearchingMain = mainSearch && mainSearch.trim().length > 0;
   const displayedWatchlist = buildDisplayedWatchlist();
   const displayedWishlist = wishlist.filter((w) => {
-    // genre filter
     if (watchFilterGenre !== "all") {
       const gid = Number(watchFilterGenre);
-      if (!Array.isArray(w.genre_ids) || !w.genre_ids.includes(gid))
+      if (!Array.isArray(w.genre_ids) || !w.genre_ids.includes(gid)) {
         return false;
+      }
     }
 
-    // text search
     if (watchSearch.trim()) {
-      return (w.title || "").toLowerCase().includes(watchSearch.toLowerCase());
+      return (w.title || "")
+        .toLowerCase()
+        .includes(watchSearch.toLowerCase());
     }
 
     return true;
   });
+
   const watchStats = React.useMemo(() => {
     return getWatchStats(watched);
   }, [watched]);
@@ -412,95 +475,167 @@ export default function App() {
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100">
       {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          exitSearchMode();
+        }}
+      />
 
       {/* Main area */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Header */}
+        {/* Header: global search bar */}
         <Header
           title="Movie-Log v2"
-          search={headerSearch}
-          setSearch={setHeaderSearch}
-          mediaType={mediaType}
-          setMediaType={setMediaType}
+          search={searchQuery}
+          setSearch={setSearchQuery}
+          mediaType={searchFilter}
+          setMediaType={setSearchFilter}
           onOpenSettings={() => setShowSettings(true)}
           viewMode={viewMode}
           setViewMode={setViewMode}
         />
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {activeTab === "all" && (
-            <PageWrapper title="Discover">
-              <AllPage
-                viewMode={viewMode}
-                popular={popular}
-                carouselRef={carouselRef}
-                scrollCarousel={scrollCarousel}
-                isWatched={isWatched}
-                isWishlisted={isWishlisted}
-                onAddWatched={markWatched}
-                onToggleWishlist={(movie) =>
-                  isWishlisted(movie.id)
-                    ? removeFromWishlist(movie.id)
-                    : addWishlist(movie)
-                }
-              />
-            </PageWrapper>
-          )}
+        {/* Search Results Page (grid only) */}
+        {isSearching && (
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="mb-4 flex items-center gap-4">
+              <h2 className="text-xl font-bold">Search Results</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSearchFilter("all")}
+                  className={`px-3 py-1 rounded-full text-sm transition ${searchFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+                    }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setSearchFilter("movie")}
+                  className={`px-3 py-1 rounded-full text-sm transition ${searchFilter === "movie"
+                    ? "bg-blue-600 text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+                    }`}
+                >
+                  Movies
+                </button>
+                <button
+                  onClick={() => setSearchFilter("tv")}
+                  className={`px-3 py-1 rounded-full text-sm transition ${searchFilter === "tv"
+                    ? "bg-blue-600 text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+                    }`}
+                >
+                  TV Shows
+                </button>
+              </div>
+            </div>
 
-          {activeTab === "watchlist" && (
-            <PageWrapper title="Your Watchlist">
-              <WatchlistPage
-                viewMode={viewMode}
-                watched={displayedWatchlist}
-                genresMap={genresMap}
-                ratings={ratings}
-                onRemove={removeFromWatched}
-                onSetRating={setRating}
-                onMoveToWishlist={addWishlist}
-              />
-            </PageWrapper>
-          )}
+            <SearchResultsGrid
+              viewMode={viewMode}
+              results={searchResults.filter((item) =>
+                searchFilter === "all" ? true : item.media_type === searchFilter
+              )}
+              isInWatchlist={(item) =>
+                watched.some((w) => {
+                  // V2 Exact match
+                  if (w.tmdb_id === item.tmdb_id && w.media_type === item.media_type) return true;
+                  // V2 ID fallback
+                  if (w.id === item.id) return true;
+                  // V1 Legacy match (w.id is number/string TMDB ID, item.media_type must be movie or undefined/implied)
+                  // Casting w.id to number/string loosely
+                  if (w.id == item.tmdb_id && (item.media_type === "movie" || !item.media_type)) return true;
 
-          {activeTab === "wishlist" && (
-            <PageWrapper title="Your Wishlist">
-              <WishlistPage
-                viewMode={viewMode}
-                wishlist={displayedWishlist}
-                genresMap={genresMap}
-                onRemove={removeFromWishlist}
-                onMoveToWatched={markWatched}
-              />
-            </PageWrapper>
-          )}
-
-          {activeTab === "insights" && (
-            <PageWrapper title="Insights">
-              <InsightsPage stats={watchStats} />
-            </PageWrapper>
-          )}
-          {showSettings && (
-            <SettingsModal
-              apiKey={apiKey}
-              setApiKey={setApiKey}
-              autoRefresh={refreshMins}
-              setAutoRefresh={setRefreshMins}
-              onImport={(file) =>
-                handleImportFile({
-                  file,
-                  apiKey,
-                  watched,
-                  setWatched,
-                  TMDB_BASE,
+                  return false;
                 })
               }
-              onExportWatched={() => exportWatched({ watched, ratings })}
-              onExportWishlist={() => exportWishlist({ wishlist })}
-              onClose={() => setShowSettings(false)}
+              isInWishlist={(item) =>
+                wishlist.some((w) => {
+                  if (w.tmdb_id === item.tmdb_id && w.media_type === item.media_type) return true;
+                  if (w.id === item.id) return true;
+                  if (w.id == item.tmdb_id && (item.media_type === "movie" || !item.media_type)) return true;
+                  return false;
+                })
+              }
+              onAddWatchlist={addToWatchlist}
+              onAddWishlist={addToWishlist}
             />
-          )}
-        </main>
+          </main>
+        )}
+
+        {/* Main app pages (hidden when searching) */}
+        {!isSearching && (
+          <main className="flex-1 overflow-y-auto p-6">
+            {activeTab === "all" && (
+              <PageWrapper title="Discover">
+                <AllPage
+                  viewMode={viewMode}
+                  popular={popular}
+                  carouselRef={carouselRef}
+                  scrollCarousel={scrollCarousel}
+                  isWatched={isWatched}
+                  isWishlisted={isWishlisted}
+                  onAddWatched={addToWatchlist}
+                  onToggleWishlist={addToWishlist}
+                />
+              </PageWrapper>
+            )}
+
+            {activeTab === "watchlist" && (
+              <PageWrapper title="Your Watchlist">
+                <WatchlistPage
+                  viewMode={viewMode}
+                  watched={displayedWatchlist}
+                  genresMap={genresMap}
+                  ratings={ratings}
+                  onRemove={removeFromWatched}
+                  onSetRating={setRating}
+                  onMoveToWishlist={addToWishlist}
+                />
+              </PageWrapper>
+            )}
+
+            {activeTab === "wishlist" && (
+              <PageWrapper title="Your Wishlist">
+                <WishlistPage
+                  viewMode={viewMode}
+                  wishlist={displayedWishlist}
+                  genresMap={genresMap}
+                  onRemove={removeFromWishlist}
+                  onMoveToWatched={addToWatchlist}
+                />
+              </PageWrapper>
+            )}
+
+            {activeTab === "insights" && (
+              <PageWrapper title="Insights">
+                <InsightsPage stats={watchStats} />
+              </PageWrapper>
+            )}
+            {showSettings && (
+              <SettingsModal
+                apiKey={apiKey}
+                setApiKey={setApiKey}
+                autoRefresh={refreshMins}
+                setAutoRefresh={setRefreshMins}
+                onImport={(file) =>
+                  handleImportFile({
+                    file,
+                    apiKey,
+                    watched,
+                    setWatched,
+                    TMDB_BASE,
+                  })
+                }
+                onExportWatched={() => exportWatched({ watched, ratings })}
+                onExportWishlist={() => exportWishlist({ wishlist })}
+                onClose={() => setShowSettings(false)}
+              />
+            )}
+          </main>
+        )}
       </div>
     </div>
   );

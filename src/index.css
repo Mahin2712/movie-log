@@ -113,7 +113,7 @@ body {
 
 /* search bar */
 .search-bar {
-  width: 420px;
+  width: 100%;
   background: var(--bg-panel);
   border: 1px solid var(--border-soft);
   border-radius: 999px;

@@ -1,0 +1,2884 @@
+======== FILES ========
+*** src/App.css ***
+/* Highlight effect for rating button on hover */
+.rating-display:hover {
+  box-shadow: 0 0 0 3px #2196f366, 0 2px 8px #21cbf355;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+/* Glow effect for star hover */
+.star-panel .star-slot:hover .star-visual {
+  filter: drop-shadow(0 0 6px #ffd54d) drop-shadow(0 0 12px #ffd54d);
+  transition: filter 0.2s;
+}
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
+*** src/App.jsx ***
+import React, { useEffect, useRef, useState } from "react";
+
+/* ------------------------ MovieRow ------------------------ */
+import MovieRow from "./components/MovieRow.jsx";
+
+/* ------------------------ WatchedRow ------------------------ */
+import WatchedRow from "./components/WatchedRow.jsx";
+
+/* ------------------------ WishlistRow ------------------------ */
+import WishlistRow from "./components/WishlistRow.jsx";
+
+/* ------------------------ SettingsModal ------------------------ */
+import SettingsModal from "./components/SettingsModal.jsx";
+
+/* ---------- import/export helpers ------------------------ */
+import { handleImportFile, exportWatched, exportWishlist } from "./utils/ImportExport";
+
+/* ---------- All Page ------------------------ */
+import AllPage from "./pages/AllPage.jsx";
+
+/* ---------- Watchlist Page ------------------------ */
+import WatchlistPage from "./pages/WatchlistPage.jsx";
+
+/* ---------- Wishlist Page ------------------------ */
+import WishlistPage from "./pages/WishlistPage.jsx";
+
+/* ---------- insights ------------------------ */
+import { getWatchStats } from "./utils/stats.js";
+import InsightsPage from "./pages/InsightsPage.jsx";
+
+
+/**
+ * Full App.jsx replacement
+ * - Replaces the app UI and fixes:
+ *   1) no-bright-white boxes / colors
+ *   2) working genre dropdowns (watchlist & wishlist)
+ *   3) rating system
+ *   4) settings modal/button
+ *   5) dropdowns & buttons working
+ * - Persisted data in localStorage keys:
+ *   movieApp_apiKey, movieApp_watched, movieApp_wishlist, movieApp_ratings, movieApp_refreshMins
+ */
+
+import { TMDB_BASE } from "./utils/constants.js";
+import { IMG_BASE } from "./utils/constants.js";
+
+export default function App() {
+  // Settings / Keys
+  const [apiKey, setApiKey] = useState(
+    () => localStorage.getItem("movieApp_apiKey") || ""
+  );
+
+  // Discovery / main content
+  const [popular, setPopular] = useState([]);
+  const [discoverResults, setDiscoverResults] = useState([]);
+  const [mainSearch, setMainSearch] = useState("");
+  const [loadingDiscover, setLoadingDiscover] = useState(false);
+
+
+
+
+  // Top genres from watched
+  const getTopGenres = () => {
+    const counts = {};
+
+    watched.forEach(m => {
+      (m.genre_ids || []).forEach(gid => {
+        counts[gid] = (counts[gid] || 0) + 1;
+      });
+    });
+
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([gid]) => Number(gid));
+  };
+
+  // Recommended movies based on top genres
+  const [recommended, setRecommended] = useState([]);
+
+
+
+  // Settings modal
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Import option from JSON/CSV
+
+
+
+
+
+
+
+
+  // Genres (map id -> name) and keep also an array for selects
+  const [genresMap, setGenresMap] = useState({});
+  const [genresArray, setGenresArray] = useState([]); // [{id, name}, ...]
+
+  // Watched/wishlist/ratings
+  const [watched, setWatched] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("movieApp_watched") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("movieApp_wishlist") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [ratings, setRatings] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("movieApp_ratings") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  // Watchlist UI: tab/search/filter/sort
+  const [activeTab, setActiveTab] = useState("all"); // "all" | "watchlist" | "wishlist"
+  const [watchSearch, setWatchSearch] = useState("");
+  const [watchFilterGenre, setWatchFilterGenre] = useState("all"); // "all" or genre id (number)
+  const [sortField, setSortField] = useState("dateAdded"); // title | rating | dateAdded | releaseDate
+  const [sortAsc, setSortAsc] = useState(false);
+  const isWatched = (movieId) => { return watched.some(w => w.id === movieId); };
+  const isWishlisted = (movieId) => { return wishlist.some(w => w.id === movieId); };
+  const [wishSort, setWishSort] = useState("newest");
+
+
+
+  const getSortedWishlist = React.useMemo(() => {
+    let list = [...wishlist];
+
+    switch (wishSort) {
+      case "oldest":
+        list.sort((a, b) => new Date(a.dateAdded) - new Date(b.dateAdded));
+        break;
+
+      case "az":
+        list.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+
+      case "za":
+        list.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+
+      default: // newest
+        list.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+    }
+
+    return list;
+  }, [wishlist, wishSort]);
+
+
+  // Carousel ref
+  const carouselRef = useRef(null);
+
+  // Auto-refresh setting
+  const [refreshMins, setRefreshMins] = useState(
+    () => Number(localStorage.getItem("movieApp_refreshMins") || "30")
+  );
+  // Exit search mode
+  const exitSearchMode = () => {
+    setMainSearch("");
+    setDiscoverResults([]);
+  };
+
+
+  // Persist to localStorage
+  useEffect(() => { localStorage.setItem("movieApp_apiKey", apiKey || "") }, [apiKey]);
+  useEffect(() => { localStorage.setItem("movieApp_watched", JSON.stringify(watched)) }, [watched]);
+  useEffect(() => { localStorage.setItem("movieApp_wishlist", JSON.stringify(wishlist)) }, [wishlist]);
+  useEffect(() => { localStorage.setItem("movieApp_ratings", JSON.stringify(ratings)) }, [ratings]);
+  useEffect(() => { localStorage.setItem("movieApp_refreshMins", String(refreshMins)) }, [refreshMins]);
+
+  // Fetch genres (map + array)
+  useEffect(() => {
+    if (!apiKey) return;
+    fetch(`${TMDB_BASE}/genre/movie/list?api_key=${apiKey}`)
+      .then(r => r.json())
+      .then(data => {
+        const map = {};
+        const arr = (data.genres || []).map(g => ({ id: g.id, name: g.name }));
+        (data.genres || []).forEach(g => map[g.id] = g.name);
+        setGenresMap(map);
+        setGenresArray(arr);
+      })
+      .catch(() => { setGenresMap({}); setGenresArray([]); });
+  }, [apiKey]);
+
+  // Fetch popular for carousel
+  useEffect(() => {
+    if (!apiKey) return;
+    fetch(`${TMDB_BASE}/movie/popular?api_key=${apiKey}&page=1`)
+      .then(r => r.json())
+      .then(data => setPopular(data.results || []))
+      .catch(() => setPopular([]));
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (!apiKey || watched.length === 0) {
+      setRecommended([]);
+      return;
+    }
+
+    const fetchRecommendations = async () => {
+      const topGenres = getTopGenres();
+      if (topGenres.length === 0) return;
+
+      try {
+        const url = `${TMDB_BASE}/discover/movie?api_key=${apiKey}&with_genres=${topGenres.join(",")}&sort_by=popularity.desc&page=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const filtered = (data.results || []).filter(m =>
+          !watched.some(w => w.id === m.id) &&
+          !wishlist.some(w => w.id === m.id)
+        );
+
+        setRecommended(filtered.slice(0, 8));
+      } catch {
+        setRecommended([]);
+      }
+    };
+
+    fetchRecommendations();
+  }, [apiKey, watched, wishlist]);
+
+
+  // main search (discovery)
+  const runMainSearch = async (q) => {
+    if (!apiKey) return;
+    if (!q || q.trim().length === 0) { setDiscoverResults([]); return; }
+    setLoadingDiscover(true);
+    try {
+      const url = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(q)}&page=1`;
+      const r = await fetch(url);
+      const data = await r.json();
+      setDiscoverResults(data.results || []);
+    } catch (e) {
+      console.error(e);
+      setDiscoverResults([]);
+    } finally {
+      setLoadingDiscover(false);
+    }
+  };
+
+  // ---------- helpers: watched/wishlist/ratings ----------
+  // mark as watched (store some movie data including genre ids so filters can work)
+  const markWatched = (m) => {
+    if (!watched.some(w => w.id === m.id)) {
+      const newItem = {
+        id: m.id,
+        tmdb_id: m.id,
+        title: m.title,
+        poster_path: m.poster_path || null,   // ✅ ADD THIS
+        release_date: m.release_date || null,
+        overview: m.overview || "",
+        genre_ids: m.genre_ids || [],
+        dateAdded: new Date().toISOString(),
+        rating: null
+      };
+
+      setWatched(p => [newItem, ...p]);
+    }
+    // remove from wishlist
+    setWishlist(p => p.filter(w => w.id !== m.id));
+  };
+
+  // Place near other helpers in App component
+
+
+
+  const addWishlist = (m) => {
+    if (!wishlist.some(w => w.id === m.id)) {
+      const newItem = {
+        id: m.id,
+        tmdb_id: m.id,
+        title: m.title,
+        poster_path: m.poster_path || null,   // ✅ ADD THIS
+        release_date: m.release_date || null,
+        overview: m.overview || "",
+        genre_ids: m.genre_ids || [],
+        dateAdded: new Date().toISOString()
+      };
+
+      setWishlist(p => [newItem, ...p]);
+    }
+    // Remove from watched if present
+    setWatched(p => p.filter(w => w.id !== m.id));
+  };
+
+  const removeFromWatched = (id) => setWatched(p => p.filter(x => x.id !== id));
+  const removeFromWishlist = (id) => setWishlist(p => p.filter(x => x.id !== id));
+
+  // rating setter
+  const setRating = (movieId, value) => {
+    setRatings(r => ({ ...r, [movieId]: value === "" ? null : Number(value) }));
+  };
+
+  // watchlist build: filter/search/sort
+  const buildDisplayedWatchlist = () => {
+    let list = [...watched];
+
+    // genre filter (works because we now store genre_ids in watched items)
+    if (watchFilterGenre && watchFilterGenre !== "all") {
+      const gid = Number(watchFilterGenre);
+      list = list.filter(m => Array.isArray(m.genre_ids) && m.genre_ids.indexOf(gid) !== -1);
+    }
+
+    // text search
+    if (watchSearch && watchSearch.trim()) {
+      const q = watchSearch.toLowerCase();
+      list = list.filter(m => (m.title || "").toLowerCase().includes(q));
+    }
+
+    // sort
+    list.sort((a, b) => {
+      let av, bv;
+      if (sortField === "title") {
+        av = (a.title || "").toLowerCase();
+        bv = (b.title || "").toLowerCase();
+        const cmp = av.localeCompare(bv);
+        return sortAsc ? cmp : -cmp;
+      }
+      if (sortField === "rating") {
+        av = ratings[a.id] || 0;
+        bv = ratings[b.id] || 0;
+        return sortAsc ? av - bv : bv - av;
+      }
+      if (sortField === "releaseDate") {
+        av = a.release_date || "";
+        bv = b.release_date || "";
+        if (!av) return sortAsc ? -1 : 1;
+        if (!bv) return sortAsc ? 1 : -1;
+        return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      // default: dateAdded
+      av = a.dateAdded || "";
+      bv = b.dateAdded || "";
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+
+    return list;
+  };
+
+  // carousel scroll
+  const scrollCarousel = (dir = "right") => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const amount = Math.round(el.clientWidth * 0.7);
+    const next = dir === "right" ? el.scrollLeft + amount : el.scrollLeft - amount;
+    el.scrollTo({ left: next, behavior: "smooth" });
+  };
+
+  const isSearchingMain = mainSearch && mainSearch.trim().length > 0;
+  const displayedWatchlist = buildDisplayedWatchlist();
+  const displayedWishlist = wishlist.filter(w => {
+    // genre filter
+    if (watchFilterGenre !== "all") {
+      const gid = Number(watchFilterGenre);
+      if (!Array.isArray(w.genre_ids) || !w.genre_ids.includes(gid)) return false;
+    }
+
+    // text search
+    if (watchSearch.trim()) {
+      return (w.title || "").toLowerCase().includes(watchSearch.toLowerCase());
+    }
+
+    return true;
+  });
+  const watchStats = React.useMemo(() => {
+    return getWatchStats(watched);
+  }, [watched]);
+
+
+
+
+  return (
+    <div className={isSearchingMain ? "search-active" : ""}>
+      {/* header */}
+      <div className="app-header container-max">
+        <div className="flex-gap-12 flex-center">
+          <div className="app-title">
+            <h1 className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              Movie Log
+            </h1>
+            <span>keep track of what you watch</span>
+          </div>
+
+          <div
+            className="nav-tabs"
+            role="tablist"
+            aria-label="tabs"
+            style={{ marginLeft: 8 }}
+          >
+            <button
+              className={`tab ${activeTab === "all" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("all"); }}
+            >
+              All
+            </button>
+
+            <button
+              className={`tab ${activeTab === "watchlist" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("watchlist"); }}
+            >
+              Watchlist
+            </button>
+
+            <button
+              className={`tab ${activeTab === "wishlist" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("wishlist"); }}
+            >
+              Wishlist
+            </button>
+
+            <button
+              className={`tab ${activeTab === "insights" ? "active" : ""}`}
+              onClick={() => { exitSearchMode(); setActiveTab("insights"); }}
+            >
+              Insights
+            </button>
+          </div>
+
+        </div>
+
+        <div className="flex-gap-12 flex-center">
+          <input
+            className="search-bar"
+            placeholder="Search movies..."
+            value={mainSearch}
+            onChange={(e) => setMainSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") runMainSearch(mainSearch); }}
+          />
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Watched:</div>
+            <div style={{ fontWeight: 700, marginTop: 2 }}>{watched.length}</div>
+          </div>
+
+          <button className="btn" title="Settings" onClick={() => setShowSettings(true)} style={{ marginLeft: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 0 1 2.3 16.9l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 0 1 6.7 2.3l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c.09.6.56 1.09 1.16 1.28.7.24 1.39-.06 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06c-.27.43-.57 1.12-.33 1.82.19.6.68 1.07 1.28 1.16H21a2 2 0 0 1 0 4h-.09c-.6.09-1.09.56-1.28 1.16z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* All Page */}
+      {activeTab === "all" && (
+        <AllPage
+          popular={popular}
+          carouselRef={carouselRef}
+          scrollCarousel={scrollCarousel}
+          isWatched={(id) => watched.some(m => m.id === id)}
+          isWishlisted={(id) => wishlist.some(m => m.id === id)}
+          onAddWatched={markWatched}
+          onToggleWishlist={(movie) =>
+            wishlist.some(w => w.id === movie.id)
+              ? removeFromWishlist(movie.id)
+              : addWishlist(movie)
+          }
+        />
+      )}
+
+
+
+      {activeTab === "all" && !isSearchingMain && recommended.length > 0 && (
+        <div className="container-max" style={{ marginTop: 26 }}>
+          <div className="carousel-title">
+            Recommended for you
+          </div>
+
+          <div className="grid-gap-12">
+            {recommended.map(m => (
+              <MovieRow
+                key={m.id}
+                movie={m}
+                genresMap={genresMap}
+                isWatched={isWatched(m.id)}
+                isWishlisted={isWishlisted(m.id)}
+                onMarkWatched={() => markWatched(m)}
+                onToggleWishlist={() => {
+                  isWishlisted(m.id)
+                    ? removeFromWishlist(m.id)
+                    : addWishlist(m);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+
+      {/* main content */}
+      <div className="container-max" style={{ marginTop: 20 }}>
+        {/* search results */}
+        {isSearchingMain ? (
+          <div className="mt-8">
+            <div className="text-muted mb-10">
+              Showing search results for <strong>"{mainSearch}"</strong>
+              &nbsp;&nbsp;
+              <button className="btn" style={{ marginLeft: 8 }} onClick={() => { setMainSearch(""); setDiscoverResults([]); }}>Clear</button>
+            </div>
+
+            {loadingDiscover ? <div style={{ color: "var(--text-muted)" }}>Loading…</div> : (
+              <div className="grid-gap-14">
+                {(discoverResults || []).map(m => (
+                  <MovieRow
+                    key={m.id}
+                    movie={m}
+                    genresMap={genresMap}
+                    isWatched={isWatched(m.id)}
+                    isWishlisted={isWishlisted(m.id)}
+                    onMarkWatched={() => markWatched(m)}
+                    onToggleWishlist={() => {
+                      isWishlisted(m.id)
+                        ? removeFromWishlist(m.id)
+                        : addWishlist(m);
+                    }} />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* watchlist / wishlist panel */}
+        {activeTab !== "all" && (
+          <div className="mt-18">
+
+            <div className="mt-14">
+              {activeTab === "watchlist" && displayedWatchlist.length === 0 && (
+                <div className="card" style={{ padding: 16, color: "var(--text-muted)" }}>No items in watchlist.</div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
+                {activeTab === "watchlist" && (
+                  <WatchlistPage
+                    watched={displayedWatchlist}
+                    genresMap={genresMap}
+                    ratings={ratings}
+                    onRemove={removeFromWatched}
+                    onRate={setRating}
+                    onMoveToWishlist={addWishlist}
+                  />
+                )}
+
+
+                {activeTab === "wishlist" && (
+                  <WishlistPage
+                    wishlist={displayedWishlist}
+                    genresMap={genresMap}
+                    onRemove={removeFromWishlist}
+                    onMoveToWatched={markWatched}
+                  />
+                )}
+
+                {activeTab === "insights" && (
+                  <InsightsPage
+                    stats={watchStats}
+                    wishlist={wishlist}
+                  />
+                )}
+
+
+
+
+
+              </div>
+            </div>
+          </div>
+        )}
+
+
+      </div>
+
+      {/* settings modal */}
+      {showSettings && (
+        <SettingsModal
+          apiKey={apiKey}
+          setApiKey={setApiKey}
+          autoRefresh={refreshMins}
+          setAutoRefresh={setRefreshMins}
+          onImport={(file) =>
+            handleImportFile({
+              file,
+              apiKey,
+              watched,
+              setWatched,
+              TMDB_BASE
+            })
+          }
+          onExportWatched={() => exportWatched({ watched, ratings })}
+          onExportWishlist={() => exportWishlist({ wishlist })}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
+
+      <div style={{ height: 28 }} />
+    </div>
+  );
+}
+
+
+*** src/index.css ***
+@import "tailwindcss";
+
+/* ================================
+   GLOBAL THEME & RESET
+================================ */
+:root {
+  --bg-main: #050b18;
+  --bg-panel: #0b1324;
+  --bg-soft: #0e1830;
+  --border-soft: rgba(255, 255, 255, 0.04);
+  --text-main: #e8ecf3;
+  --text-muted: #9aa4bf;
+  --accent: #4f7cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(1200px 600px at top, #0a1430, #050b18);
+  color: var(--text-main);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* layout containers */
+.container-max {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* header */
+.app-header {
+  padding: 16px 32px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-title h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.app-title span {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.tab {
+  background: transparent;
+  color: #cfd8ff;
+  padding: 8px 16px;
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+}
+
+/* Hover only for INACTIVE tabs */
+.tab:not(.active):hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Active tab */
+.tab.active {
+  background: #4f7cff;
+  color: white;
+  cursor: default;
+}
+
+/* 🚫 Prevent hover override on active */
+.tab.active:hover {
+  background: #4f7cff;
+}
+
+
+/* nav tabs */
+.nav-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--bg-panel);
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+}
+
+.nav-tabs button {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.nav-tabs button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* search bar */
+.search-bar {
+  width: 420px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  padding: 10px 18px;
+  color: var(--text-main);
+}
+
+.search-bar::placeholder {
+  color: var(--text-muted);
+}
+
+/* buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-main);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+
+.btn-primary {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+/* carousel/trending */
+.carousel-section {
+  margin-top: 18px;
+  padding: 0 32px;
+}
+
+.carousel-title {
+  font-size: 15px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.carousel-wrapper {
+  position: relative;
+}
+
+.carousel {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 6px;
+  align-items: flex-start;
+}
+
+.carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-arrow {
+  position: absolute;
+  top: 45%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--border-soft);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+}
+
+.carousel-arrow.left {
+  left: -18px;
+}
+
+.carousel-arrow.right {
+  right: -18px;
+}
+
+/* movie card */
+.movie-card {
+  background: linear-gradient(180deg, #0e1830, #0a1225);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.movie-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+
+.movie-poster {
+  width: 90px;
+  height: 135px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.movie-card:hover .movie-poster {
+  transform: scale(1.04);
+}
+
+.movie-info h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.movie-info .year {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.movie-info p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* genre tag */
+.genre-tag {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+}
+
+/* hide carousel during main search */
+.search-active .carousel-section {
+  display: none;
+}
+
+/* dropdown (dark) */
+.dropdown-dark {
+  background: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.dropdown-dark option {
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+
+/* rating select */
+.rating-select {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+/* modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 15, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+
+.modal {
+  background: linear-gradient(180deg, rgba(10, 16, 30, 0.98), rgba(6, 10, 20, 0.98));
+  border: 1px solid var(--border-soft);
+  padding: 18px;
+  border-radius: 12px;
+  width: 420px;
+  max-width: calc(100% - 40px);
+  color: var(--text-main);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+
+/* small card */
+.card {
+  background: linear-gradient(180deg, rgba(8, 12, 24, 0.4), rgba(6, 10, 20, 0.35));
+  border: 1px solid var(--border-soft);
+  padding: 12px;
+  border-radius: 10px;
+}
+
+/* small responsive tweaks */
+@media (max-width: 900px) {
+  .search-bar {
+    width: 220px;
+  }
+
+  .movie-poster {
+    width: 72px;
+    height: 108px;
+  }
+
+  .app-title h1 {
+    font-size: 26px;
+  }
+}
+
+/* ================================
+   FORCE DARK SELECT + OPTIONS
+   ================================ */
+
+select {
+  background-color: rgba(15, 23, 42, 0.95);
+  /* dark slate */
+  color: #e5e7eb;
+  /* light text */
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* dropdown list */
+select option {
+  background-color: #0b1220;
+  /* SAME as app bg */
+  color: #e5e7eb;
+}
+
+/* hover & selected option */
+select option:checked,
+select option:hover {
+  background-color: #1e293b;
+  color: #ffffff;
+}
+
+/* Firefox fix */
+select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 #e5e7eb;
+}
+
+/* watched button state */
+.btn-watched {
+  background: linear-gradient(180deg, #1f8f5f, #16734a);
+  border: none;
+  color: #eafff4;
+  cursor: default;
+}
+
+/* hover effect ONLY for mark watched (not wishlist) */
+.btn:not(.btn-watched):hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(79, 124, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* disabled button cleanup */
+.btn:disabled {
+  opacity: 0.85;
+}
+
+.search-bar:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.search-bar:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79, 124, 255, 0.25);
+}
+
+.btn:hover:not(:disabled):not(.btn-watched) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-tabs button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+/* wishlist heart button */
+.wishlist-btn {
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+
+/* hover */
+.wishlist-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: scale(1.05);
+}
+
+/* active (wishlisted) */
+.wishlist-btn.active {
+  color: #ff5a7a;
+  border-color: rgba(255, 90, 122, 0.4);
+  background: rgba(255, 90, 122, 0.12);
+}
+
+/* wishlist disabled (when watched) */
+.wishlist-btn.disabled,
+.wishlist-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* prevent hover effects when disabled */
+.wishlist-btn.disabled:hover {
+  background: transparent;
+}
+
+/* ===== Layout Utilities ===== */
+
+.toolbar-right {
+  margin-left: auto;
+}
+
+
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+}
+
+.flex-gap-8 {
+  display: flex;
+  gap: 8px;
+}
+
+.flex-gap-12 {
+  display: flex;
+  gap: 12px;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.grid-gap-12 {
+  display: grid;
+  gap: 12px;
+}
+.grid-gap-14 {
+  display: grid;
+  gap: 14px;
+}
+
+
+/* ===== Spacing Utilities ===== */
+.mt-10 { margin-top: 10px; }
+.mb-10 { margin-bottom: 10px; }
+.mt-14 { margin-top: 14px; }
+.mb-14 { margin-bottom: 14px; }
+.mt-18 { margin-top: 18px; }
+.mt-8 { margin-top: 8px; }
+
+/* ===== Stats Panel ===== */
+
+.stats-panel {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+}
+
+.stats-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stats-card {
+  background: var(--bg-soft);
+  border-radius: 12px;
+  padding: 12px;
+}
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+
+.stats-value {
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.stats-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.stats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stats-list li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.stats-list span {
+  color: var(--text-muted);
+}
+/* ------- StatsPanel compact / dropdown styles ------- */
+.dropdown-card {
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.stats-title { font-weight: 700; font-size: 16px; }
+
+.stats-grid-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* small card variant: tighter padding so panel is compact */
+.stats-card.small {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--bg-soft);
+}
+
+/* Genres list */
+.genre-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.genre-row { display: grid; grid-template-columns: auto 48px; gap: 8px; align-items: center; }
+.genre-name { font-size: 14px; color: var(--text-main); }
+.genre-value { font-size: 13px; color: var(--text-muted); text-align: right; padding-right: 6px; }
+.genre-bar-wrap { grid-column: 1 / -1; height: 6px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-top: 6px; }
+.genre-bar { height: 100%; background: linear-gradient(90deg,var(--accent), #6b8ff0); border-radius: 6px; }
+
+/* Ratings */
+.ratings-split { display: flex; gap: 8px; }
+.ratings-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.rating-row { display: grid; grid-template-columns: 48px 1fr 40px; gap: 8px; align-items: center; }
+.rating-label { font-size: 13px; width: 48px; color: var(--text-main); }
+.rating-bar-wrap { background: rgba(255,255,255,0.03); height: 10px; border-radius: 999px; overflow: hidden; }
+.rating-bar { height: 100%; background: linear-gradient(90deg,#ffd54d,#ff8a65); border-radius: 999px; }
+.rating-count { text-align: right; font-size: 13px; color: var(--text-muted); width: 40px; }
+
+/* collapsed/expanded states */
+.dropdown-card.closed .stats-body { display: none; }
+
+/* ===== Compact / collapsible StatsPanel styles ===== */
+.dropdown-card {
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+}
+
+/* header */
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.stats-title { font-weight: 700; font-size: 15px; }
+.stats-subtitle { margin-top: 4px; font-size: 13px; color: var(--text-muted); display:flex; gap:8px; align-items:center; }
+.mini-label { color: var(--text-muted); font-size:12px; margin-right:6px; }
+
+/* small genre pills for collapsed summary */
+.genre-pill {
+  display:inline-block;
+  background: rgba(255,255,255,0.03);
+  color: var(--text-main);
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* body */
+.stats-body { margin-top: 8px; }
+
+/* grid compact */
+.stats-grid-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* make the panel smaller by using 'small' cards */
+.stats-card.small { padding: 10px; border-radius: 10px; background: var(--bg-soft); }
+
+/* genre list compact */
+.genre-list.compact { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; max-height:220px; overflow:auto; }
+.genre-row.compact { display:flex; flex-direction:column; gap:6px; }
+.genre-left { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.genre-name { font-size:14px; color:var(--text-main); }
+.genre-value { font-size:13px; color:var(--text-muted); min-width:44px; text-align:right; }
+
+.genre-bar-wrap.small { height:8px; background: rgba(255,255,255,0.03); border-radius:6px; overflow:hidden; }
+.genre-bar { height:100%; background: linear-gradient(90deg,var(--accent), #6b8ff0); border-radius:6px; }
+
+/* ratings compact */
+.ratings-split.compact { display:flex; gap:8px; }
+.ratings-col { flex:1; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow:auto; }
+.rating-row.compact { display:grid; grid-template-columns: 48px 1fr 40px; gap:8px; align-items:center; }
+.rating-label { font-size:13px; color:var(--text-main); }
+.rating-bar-wrap.small { background: rgba(255,255,255,0.03); height:10px; border-radius:999px; overflow:hidden; }
+.rating-bar { height:100%; background: linear-gradient(90deg,#ffd54d,#ff8a65); border-radius:999px; }
+.rating-count { text-align:right; font-size:13px; color:var(--text-muted); min-width:40px; }
+
+/* collapsed state: keep body hidden (we already set display:none in JSX) */
+.dropdown-card.closed .stats-body { display:none; }
+
+/* compact-packed variant gives tighter gaps for packed UI */
+.compact-packed .stats-card.small { padding: 10px; }
+
+.rating-display {
+  font-size: 28px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rating-display:hover {
+  color: var(--accent);
+}
+.watchlist-page .movie-card {
+  background: linear-gradient(
+    180deg,
+    rgba(20,30,60,0.9),
+    rgba(10,18,40,0.9)
+  );
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.watchlist-page .movie-card + .movie-card {
+  margin-top: 14px;
+}
+
+.rating-display {
+  font-size: 25px;
+  font-weight: 700;
+  color: #638def; /* star yellow */
+  cursor: pointer;
+  min-width: 48px;
+  text-align: right;
+}
+/* ===== STAR RATING SYSTEM ===== */
+
+.star-panel {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.star-slot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+
+/* VISUAL STAR */
+.star-visual {
+  position: absolute;
+  inset: 0;
+  font-size: 22px;
+  line-height: 22px; /* IMPORTANT: exact height */
+  text-align: center;
+  color: #3a3f55;
+  transition: transform 0.15s ease;
+}
+
+/* FULL STAR */
+.star-visual.full {
+  color: #ffd54d;
+}
+
+/* HALF STAR — REAL HALF, NOT CLIPPED WIDTH */
+.star-visual.half {
+  background: linear-gradient(
+    to right,
+    #ffd54d 50%,
+    #3a3f55 50%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Hover scale */
+.star-slot:hover .star-visual {
+  transform: scale(1.2);
+}
+
+/* INTERACTION ZONES */
+.star-hit {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 2;
+}
+
+.star-hit.left { left: 0; }
+.star-hit.right { right: 0; }
+.star-panel {
+  justify-content: flex-end;
+}
+
+/* ---------- Carousel card: stable size, scale on hover (no reflow) ---------- */
+.carousel {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 12px 0 20px;
+  align-items: center; /* center cards vertically */
+}
+
+.carousel-card {
+  flex: 0 0 auto;
+  width: 160px;               /* stable base width */
+  height: auto;              /* stable base height */
+  border-radius: 12px;
+  background: var(--card-bg, linear-gradient(180deg, #0e1830, #081026));
+  overflow: visible;          /* allow overlay to escape without breaking flow */
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  transform-origin: center center;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Poster: fixed area on top */
+.carousel-card img {
+  width: 100%;
+  height: 240px;              /* poster visible area */
+  object-fit: cover;
+  display: block;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+/* reveal area anchored to bottom and overlays */
+.carousel-card-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px;
+  background: linear-gradient(
+    to top,
+    rgba(6,10,20,0.95),
+    rgba(6,10,20,0.6),
+    transparent
+  );
+  border-radius: 0 0 12px 12px;
+
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+
+
+/* Show the body on hover (overlay) */
+.carousel-card:hover {
+  transform: scaleX(1.12) scaleY(1.03);
+  z-index: 10;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+}
+
+.carousel-card:hover .carousel-card-body {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* small body typography */
+.carousel-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carousel-rating {
+  font-size: 13px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+/* Keep the action buttons inside overlay tidy */
+.carousel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: flex-start;
+}
+.carousel-actions .btn {
+  flex: 1;
+  padding: 8px 8px;
+  font-size: 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: #cfe1ff;
+  border: 1px solid rgba(255,255,255,0.12);
+  transition: all 0.2s ease;
+}
+.carousel-actions .btn:not(:disabled):hover {
+  background: rgba(90,140,255,0.22);
+  border-color: rgba(120,160,255,0.45);
+}
+.carousel-actions .btn-filled {
+  background: linear-gradient(135deg, #5a8cff, #3b6cff);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 16px rgba(70,110,255,0.35);
+}
+.carousel-actions .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* subtle outline on hover */
+.carousel-card:hover {
+  outline: 1px solid rgba(100,140,255,0.18);
+}
+
+/* keep arrows aligned vertically centered irrespective of card hover */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+}
+
+
+/* responsive tweak: narrower screens */
+@media (max-width: 900px) {
+  .carousel-card { width: 140px; height: 260px; }
+  .carousel-card img { height: 180px; }
+  .carousel-card:hover { transform: scale(1.08); }
+}
+.carousel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center; /* 🔥 */
+}
+.carousel-arrow.left {
+  left: -18px;
+}
+.carousel-arrow.right {
+  right: -18px;
+}
+.carousel:hover .carousel-card:not(:hover) {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+.carousel-card-title {
+  font-weight: 600;
+  font-size: .9rem;
+  line-height: 1.25;
+  color: #ffffff;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.carousel-card img {
+  transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+.carousel-card:hover img {
+  transform: scale(1.03);
+  filter: brightness(0.90);
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.pagination button {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  color: #cfe1ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: rgba(88,140,255,0.25);
+}
+
+.pagination button.active {
+  background: #588cff;
+  color: #fff;
+}
+
+.pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+
+*** src/main.jsx ***
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App'
+import './index.css'   // <- this must be present and exact
+
+const root = createRoot(document.getElementById('root'))
+root.render(<React.StrictMode><App /></React.StrictMode>)
+
+
+*** src/utils/constants.js ***
+// src/utils/constants.js
+export const IMG_BASE = "https://image.tmdb.org/t/p/w342";
+export const TMDB_BASE = "https://api.themoviedb.org/3";
+
+
+*** src/utils/ImportExport.js ***
+export function exportWishlist({ wishlist }) {
+  const payload = {
+    app: "movie-log",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    type: "wishlist",
+    movies: wishlist.map(w => ({
+      tmdb_id: w.tmdb_id || w.id,
+      title: w.title,
+      release_year: w.release_date?.slice(0, 4) || null,
+      dateAdded: w.dateAdded || null
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "wishlist_export_v2.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+// src/utils/importExport.js
+
+export const normalizeId = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+export const extractTmdbId = (item) => {
+  const keys = ["tmdb_id", "tmdb-id", "tmdbId", "tmdb", "movie_id", "id"];
+  for (const k of keys) {
+    const n = normalizeId(item[k]);
+    if (n) return n;
+  }
+  return null;
+};
+
+export async function smartImport({
+  items,
+  watched,
+  apiKey,
+  setWatched,
+  TMDB_BASE
+}) {
+  const watchedMap = new Map();
+
+  watched.forEach(m => {
+    const id = normalizeId(m.tmdb_id || m.id);
+    if (id) watchedMap.set(id, m);
+  });
+
+  let importedCount = 0;
+  let skippedCount = 0;
+
+  for (const item of items) {
+    let tmdbId = extractTmdbId(item);
+    tmdbId = normalizeId(tmdbId);
+
+    if (!tmdbId && item.title) {
+      const year =
+        item.release_year ||
+        item.release_date?.slice(0, 4) ||
+        "";
+
+      const res = await fetch(
+        `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(item.title)}&year=${year}`
+      );
+      const data = await res.json();
+      tmdbId = normalizeId(data.results?.[0]?.id);
+    }
+
+    if (!tmdbId || watchedMap.has(tmdbId)) {
+      skippedCount++;
+      continue;
+    }
+
+    const res = await fetch(
+      `${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}`
+    );
+    const m = await res.json();
+
+    if (!m || !m.id) {
+      skippedCount++;
+      continue;
+    }
+
+    watchedMap.set(tmdbId, {
+      id: m.id,
+      tmdb_id: m.id,
+      title: m.title,
+      poster_path: m.poster_path,
+      release_date: m.release_date,
+      overview: m.overview,
+      genre_ids: m.genres?.map(g => g.id) || [],
+      dateAdded: item.dateAdded || new Date().toISOString(),
+      rating: item.rating ?? null
+    });
+
+    importedCount++;
+  }
+
+  setWatched(Array.from(watchedMap.values()));
+
+  alert(
+    `Import finished\n\nImported: ${importedCount}\nSkipped (duplicates): ${skippedCount}`
+  );
+}
+
+export async function handleImportFile({
+  file,
+  apiKey,
+  watched,
+  setWatched,
+  TMDB_BASE
+}) {
+  if (!file || !apiKey) {
+    alert("Missing file or TMDB API key");
+    return;
+  }
+  const text = await file.text();
+
+  let items = [];
+
+  if (file.name.endsWith(".json")) {
+    const data = JSON.parse(text);
+    items = data.movies || data;
+  } else if (file.name.endsWith(".csv")) {
+    const [header, ...rows] = text.split("\n");
+    const keys = header.split(",");
+
+    items = rows
+      .filter(Boolean)
+      .map(row => {
+        const values = row.split(",");
+        const obj = {};
+        keys.forEach((k, i) => (obj[k.trim()] = values[i]?.trim()));
+        return obj;
+      });
+  }
+
+  await smartImport({
+    items,
+    watched,
+    apiKey,
+    setWatched,
+    TMDB_BASE
+  });
+}
+
+export function exportWatched({ watched, ratings }) {
+  const payload = {
+    app: "movie-log",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    type: "watched",
+    movies: watched.map(w => ({
+      tmdb_id: w.tmdb_id || w.id,
+      title: w.title,
+      release_year: w.release_date?.slice(0, 4) || null,
+      rating: ratings[w.id] || null,
+      dateAdded: w.dateAdded || null
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "watched_export_v2.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+*** src/utils/stats.js ***
+export function getWatchStats(watched = []) {
+  const now = new Date();
+
+  let allTime = watched.length;
+  let thisYear = 0;
+  let thisMonth = 0;
+  let thisWeek = 0;
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  watched.forEach(m => {
+    if (!m.dateAdded) return;
+
+    const d = new Date(m.dateAdded);
+
+    if (d.getFullYear() === now.getFullYear()) {
+      thisYear++;
+
+      if (d.getMonth() === now.getMonth()) {
+        thisMonth++;
+      }
+    }
+
+    if (d >= startOfWeek) {
+      thisWeek++;
+    }
+  });
+
+  return {
+    allTime,
+    thisYear,
+    thisMonth,
+    thisWeek
+  };
+}
+
+
+*** src/pages/AllPage.jsx ***
+import { IMG_BASE } from "../utils/constants";
+
+export default function AllPage({
+  popular,
+  carouselRef,
+  scrollCarousel,
+  isWatched,
+  isWishlisted,
+  onAddWatched,
+  onToggleWishlist
+}) {
+  return (
+    <section className="carousel-section container-max">
+      <h2 className="carousel-title">Popular / Now Playing</h2>
+
+      <div className="carousel-wrapper">
+        <button
+          className="carousel-arrow left"
+          onClick={() => scrollCarousel("left")}
+        >
+          ◀
+        </button>
+
+        <div ref={carouselRef} className="carousel">
+          {popular.map(movie => {
+            const watched = isWatched(movie.id);
+            const wishlisted = isWishlisted(movie.id);
+
+            return (
+              <div key={movie.id} className="carousel-card">
+                <img
+                  src={movie.poster_path ? IMG_BASE + movie.poster_path : ""}
+                  alt={movie.title}
+                />
+
+                <div className="carousel-card-body">
+                  <div className="carousel-card-title">
+                    {movie.title}
+                  </div>
+
+                  {movie.vote_average > 0 && (
+                    <div className="carousel-rating">
+                      ★ {movie.vote_average.toFixed(1)}
+                    </div>
+                  )}
+
+                  <div className="carousel-actions">
+                    {/* ADD TO WATCHED */}
+                    <button
+                      className={`btn ${watched ? "btn-filled" : ""}`}
+                      disabled={watched}
+                      onClick={() => onAddWatched(movie)}
+                    >
+                      {watched ? "✓ Watched" : "+ Watchlist"}
+                    </button>
+
+                    {/* ADD TO WISHLIST */}
+                    <button
+                      className={`btn ${wishlisted ? "btn-filled" : ""}`}
+                      disabled={watched || wishlisted}
+                      onClick={() => onToggleWishlist(movie)}
+                    >
+                      {wishlisted ? "♥" : "♡"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          className="carousel-arrow right"
+          onClick={() => scrollCarousel("right")}
+        >
+          ▶
+        </button>
+      </div>
+    </section>
+  );
+}
+
+
+*** src/pages/InsightsPage.jsx ***
+import React from "react";
+import StatsPanel from "../components/StatsPanel";
+
+export default function InsightsPage({ stats }) {
+  if (!stats) return null;
+
+  return (
+    <div className="page insights-page">
+      <h2>Viewing activity</h2>
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{stats.allTime}</div>
+          <div className="stat-label">All time</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-value">{stats.thisYear}</div>
+          <div className="stat-label">This year</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-value">{stats.thisMonth}</div>
+          <div className="stat-label">This month</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-value">{stats.thisWeek}</div>
+          <div className="stat-label">This week</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+*** src/pages/WatchlistPage.jsx ***
+import { useState, useMemo, useEffect } from "react";
+import WatchedRow from "../components/WatchedRow";
+
+const ITEMS_PER_PAGE = 15; // tweak: 10 / 12 / 15
+
+export default function WatchlistPage({
+    watched,
+    genresMap,
+    ratings,
+    onRemove,
+    onRate,
+    onMoveToWishlist
+}) {
+    // 🔹 local controls (watchlist-only)
+    const [search, setSearch] = useState("");
+    const [genre, setGenre] = useState("all");
+    const [sortBy, setSortBy] = useState("dateAdded");
+    const [asc, setAsc] = useState(false);
+
+    // 🔹 pagination
+    const [page, setPage] = useState(1);
+
+    /* ----------------------------------------
+       FILTER + SORT (FAST, MEMOIZED)
+    ---------------------------------------- */
+    const filteredWatched = useMemo(() => {
+        let list = [...watched];
+
+        // 🔍 search
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter(m =>
+                (m.title || "").toLowerCase().includes(q)
+            );
+        }
+
+        // 🎭 genre
+        if (genre !== "all") {
+            const gid = Number(genre);
+            list = list.filter(m =>
+                Array.isArray(m.genre_ids) && m.genre_ids.includes(gid)
+            );
+        }
+
+        // 🔃 sort
+        list.sort((a, b) => {
+            if (sortBy === "rating") {
+                return asc
+                    ? (ratings[a.id] || 0) - (ratings[b.id] || 0)
+                    : (ratings[b.id] || 0) - (ratings[a.id] || 0);
+            }
+
+            if (sortBy === "title") {
+                return asc
+                    ? a.title.localeCompare(b.title)
+                    : b.title.localeCompare(a.title);
+            }
+
+            // default: dateAdded
+            return asc
+                ? new Date(a.dateAdded) - new Date(b.dateAdded)
+                : new Date(b.dateAdded) - new Date(a.dateAdded);
+        });
+
+        return list;
+    }, [watched, search, genre, sortBy, asc, ratings]);
+
+    /* ----------------------------------------
+       PAGINATION LOGIC
+    ---------------------------------------- */
+    const totalPages = Math.max(
+        1,
+        Math.ceil(filteredWatched.length / ITEMS_PER_PAGE)
+    );
+
+    const paginatedWatched = useMemo(() => {
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        return filteredWatched.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredWatched, page]);
+
+    // 🔄 reset page when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [search, genre, sortBy, asc]);
+
+    /* ----------------------------------------
+       RENDER
+    ---------------------------------------- */
+    return (
+        <div className="container-max watchlist-page">
+            {/* 🔍 FILTER BAR */}
+            <div className="filter-bar" style={{ marginBottom: 18 }}>
+                <input
+                    className="search-bar"
+                    placeholder="Search watchlist..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+
+                <select value={genre} onChange={(e) => setGenre(e.target.value)}>
+                    <option value="all">All genres</option>
+                    {Object.entries(genresMap).map(([id, name]) => (
+                        <option key={id} value={id}>
+                            {name}
+                        </option>
+                    ))}
+                </select>
+
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    <option value="dateAdded">Date added</option>
+                    <option value="rating">Rating</option>
+                    <option value="title">Title</option>
+                </select>
+
+                <button className="btn" onClick={() => setAsc(a => !a)}>
+                    {asc ? "↑ Asc" : "↓ Desc"}
+                </button>
+            </div>
+
+            {/* 🎬 MOVIES */}
+            {paginatedWatched.length === 0 && (
+                <div className="empty-state">No movies found</div>
+            )}
+
+            {paginatedWatched.map(w => (
+                <WatchedRow
+                    key={w.id}
+                    item={w}
+                    genresMap={genresMap}
+                    rating={ratings[w.id] || ""}
+                    onSetRating={(v) => onRate(w.id, v)}
+                    onRemove={() => onRemove(w.id)}
+                    onMoveToWishlist={() => onMoveToWishlist(w)}
+                />
+            ))}
+
+            {/* 📄 PAGINATION */}
+            {totalPages > 1 && (
+                <div className="pagination">
+                    <button
+                        className="page-btn"
+                        disabled={page === 1}
+                        onClick={() => setPage(p => p - 1)}
+                    >
+                        ◀
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p =>
+                            p === 1 ||
+                            p === totalPages ||
+                            Math.abs(p - page) <= 1
+                        )
+                        .map((p, i, arr) => (
+                            <span key={p}>
+                                {i > 0 && p - arr[i - 1] > 1 && <span className="dots">…</span>}
+                                <button
+                                    className={`page-btn ${p === page ? "active" : ""}`}
+                                    onClick={() => setPage(p)}
+                                >
+                                    {p}
+                                </button>
+                            </span>
+                        ))}
+
+                    <button
+                        className="page-btn"
+                        disabled={page === totalPages}
+                        onClick={() => setPage(p => p + 1)}
+                    >
+                        ▶
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+*** src/pages/WishlistPage.jsx ***
+import { useState, useMemo, useEffect } from "react";
+import WishlistRow from "../components/WishlistRow";
+
+const PAGE_SIZE = 12; // 🔧 change to 10 / 16 if you want
+
+export default function WishlistPage({
+    wishlist,
+    genresMap,
+    onRemove,
+    onMoveToWatched
+}) {
+    // 🔹 Wishlist-only UI state
+    const [search, setSearch] = useState("");
+    const [genre, setGenre] = useState("all");
+    const [sortBy, setSortBy] = useState("newest");
+
+    // 🔹 Pagination state
+    const [page, setPage] = useState(1);
+
+    // 🔁 Reset page when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [search, genre, sortBy]);
+
+    // 🔹 Filter + sort wishlist
+    const filteredWishlist = useMemo(() => {
+        let list = [...wishlist];
+
+        // Search
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter(m =>
+                (m.title || "").toLowerCase().includes(q)
+            );
+        }
+
+        // Genre filter
+        if (genre !== "all") {
+            const gid = Number(genre);
+            list = list.filter(m =>
+                Array.isArray(m.genre_ids) && m.genre_ids.includes(gid)
+            );
+        }
+
+        // Sorting
+        switch (sortBy) {
+            case "oldest":
+                list.sort((a, b) =>
+                    a.dateAdded.localeCompare(b.dateAdded)
+                );
+                break;
+
+            case "az":
+                list.sort((a, b) =>
+                    a.title.localeCompare(b.title)
+                );
+                break;
+
+            case "za":
+                list.sort((a, b) =>
+                    b.title.localeCompare(a.title)
+                );
+                break;
+
+            default: // newest
+                list.sort((a, b) =>
+                    b.dateAdded.localeCompare(a.dateAdded)
+                );
+        }
+
+        return list;
+    }, [wishlist, search, genre, sortBy]);
+
+    // 🔹 Pagination math
+    const totalPages = Math.max(
+        1,
+        Math.ceil(filteredWishlist.length / PAGE_SIZE)
+    );
+
+    const pagedWishlist = useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filteredWishlist.slice(start, start + PAGE_SIZE);
+    }, [filteredWishlist, page]);
+
+    return (
+        <div className="container-max">
+            {/* 🔍 Wishlist controls */}
+            <div className="filter-bar" style={{ marginBottom: 14 }}>
+                <div className="flex-gap-8 flex-center">
+                    <input
+                        className="search-bar"
+                        placeholder="Search wishlist..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+
+                    <select
+                        value={genre}
+                        onChange={(e) => setGenre(e.target.value)}
+                    >
+                        <option value="all">All genres</option>
+                        {Object.entries(genresMap).map(([id, name]) => (
+                            <option key={id} value={id}>
+                                {name}
+                            </option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                    >
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="az">A → Z</option>
+                        <option value="za">Z → A</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* 📌 Wishlist items */}
+            {pagedWishlist.map(item => (
+                <WishlistRow
+                    key={item.id}
+                    item={item}
+                    genresMap={genresMap}
+                    onRemove={() => onRemove(item.id)}
+                    onMoveToWatched={() => onMoveToWatched(item)}
+                />
+            ))}
+
+            {/* 📄 Pagination */}
+            {totalPages > 1 && (
+                <div className="pagination">
+                    <button
+                        className="page-btn"
+                        disabled={page === 1}
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                    >
+                        ‹
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p =>
+                            p === 1 ||
+                            p === totalPages ||
+                            Math.abs(p - page) <= 1
+                        )
+                        .map(p => (
+                            <button
+                                key={p}
+                                className={`page-btn ${p === page ? "active" : ""}`}
+                                onClick={() => setPage(p)}
+                            >
+                                {p}
+                            </button>
+                        ))}
+
+                    <button
+                        className="page-btn"
+                        disabled={page === totalPages}
+                        onClick={() =>
+                            setPage(p => Math.min(totalPages, p + 1))
+                        }
+                    >
+                        ›
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+*** src/components/MovieRow.jsx ***
+
+import { IMG_BASE } from "../utils/constants";
+
+// src/components/MovieRow.jsx
+export default function MovieRow({
+    movie,
+    genresMap = {},
+    isWatched,
+    isWishlisted,
+    onMarkWatched,
+    onToggleWishlist
+}) {
+    return (
+            <div className="movie-card card-hover movie-row">
+                <img className="movie-poster" src={movie.poster_path ? `${IMG_BASE}${movie.poster_path}` : ""} alt={movie.title} />
+                <div className="movie-info" style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                        <div>
+                            <h3 style={{ marginBottom: 6 }}>{movie.title}</h3>
+                            <div className="year">{movie.release_date ? movie.release_date.slice(0, 4) : "—"}</div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                            {/* mark watched button */}
+                            <button
+                                className={`btn ${isWatched ? "btn-watched" : ""}`}
+                                onClick={() => {
+                                    if (!isWatched) onMarkWatched(movie);
+                                }}
+                                disabled={isWatched}
+                                title={isWatched ? "Already marked as watched" : "Mark as watched"}
+                            >
+                                {isWatched ? "✓ Watched" : "Mark watched"}
+                            </button>
+                            {/* wishlist button */}
+                            <button
+                                className={`wishlist-btn ${isWishlisted ? "active" : ""}  ${isWatched ? "disabled" : ""} `}
+                                onClick={() => {
+                                    if (!isWatched) onToggleWishlist(movie);
+                                }}
+                                disabled={isWatched}
+                                title={isWatched ? "Already watched" : isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                            >
+                                {isWishlisted ? "❤️" : "🤍"}
+                            </button>
+
+                            <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">Open</a>
+                        </div>
+                    </div>
+
+                    <p style={{ marginTop: 10, marginBottom: 10, color: "var(--text-muted)" }}>{movie.overview || ""}</p>
+
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        {(movie.genre_ids || []).slice(0, 6).map(gid => (
+                            <span key={gid} className="genre-tag">{genresMap[gid] || "Genre"}</span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+    );
+}
+
+
+*** src/components/SettingsModal.jsx ***
+export default function SettingsModal({
+  apiKey,
+  setApiKey,
+  autoRefresh,
+  setAutoRefresh,
+  onImport,
+  onExportWatched,
+  onExportWishlist,
+  onClose
+}) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ marginTop: 0 }}>Settings</h3>
+
+        {/* API KEY */}
+        <label style={{ display: "block", marginTop: 8, fontSize: 13, color: "var(--text-muted)" }}>
+          TMDB API Key
+        </label>
+        <input
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="Paste TMDB v3 API key"
+          style={{ width: "100%", padding: 8, borderRadius: 8, marginTop: 6 }}
+        />
+
+        {/* AUTO REFRESH */}
+        <label style={{ display: "block", marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
+          Auto refresh (mins)
+        </label>
+        <input
+          type="number"
+          min="1"
+          value={autoRefresh}
+          onChange={(e) =>
+            setAutoRefresh(Math.max(1, Number(e.target.value || 1)))
+          }
+          style={{ width: 120, padding: 8, borderRadius: 8, marginTop: 6 }}
+        />
+
+        {/* IMPORT/EXPORT */}
+        <div className="card" style={{ marginTop: 16, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 2, letterSpacing: 0.2 }}>
+            Import watched list
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 2 }}>
+            Supports old & new exports (<b>CSV</b> / <b>JSON</b>). Duplicates will be skipped.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2 }}>
+            <label htmlFor="import-file" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'linear-gradient(90deg,#4f7cff,#38bdf8)',
+              color: '#fff',
+              padding: '8px 18px',
+              borderRadius: 10,
+              fontWeight: 500,
+              fontSize: 15,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(79,124,255,0.10)',
+              border: 'none',
+              transition: 'background 0.2s, box-shadow 0.2s',
+            }}>
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              Import File
+              <input
+                id="import-file"
+                type="file"
+                accept=".json,.csv"
+                onChange={(e) => onImport(e.target.files[0])}
+                style={{ display: 'none' }}
+              />
+            </label>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              Choose a file to import
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, minWidth: 0, transition: 'box-shadow 0.2s, background 0.2s', boxShadow: '0 2px 8px rgba(79,124,255,0.08)' }}
+              onClick={onExportWatched}
+            >
+              Export Watched List
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1, minWidth: 0, background: 'linear-gradient(90deg,#ff5a7a,#ffb86c)', color: '#fff', border: 'none', transition: 'box-shadow 0.2s, background 0.2s', boxShadow: '0 2px 8px rgba(255,90,122,0.08)' }}
+              onClick={onExportWishlist}
+            >
+              Export Wishlist
+            </button>
+          </div>
+        </div>
+
+        {/* ACTIONS */}
+        <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="btn" onClick={onClose}>Close</button>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              localStorage.setItem("movieApp_apiKey", apiKey || "");
+              localStorage.setItem("movieApp_refreshMins", String(autoRefresh));
+              onClose();
+              alert("Saved settings");
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+*** src/components/StatsPanel.jsx ***
+import React from "react";
+
+/**
+ * Compact, collapsible stats panel.
+ * - collapsed by default
+ * - small summary when collapsed (top 3 genres pills)
+ * - expanded view: top genres + rating bars (1-10) split in two cols
+ * - max-height with scroll so it never overflows the page
+ *
+ * props:
+ * - stats: { totalWatched, topGenres, ratingCount, ratingPercent }
+ */
+export default function StatsPanel({ stats }) {
+  const [open, setOpen] = React.useState(false); // default CLOSED
+  const [showAllGenres, setShowAllGenres] = React.useState(false);
+
+  if (!stats || stats.totalWatched === 0) return null;
+
+  const { topGenres = [], ratingCount = {}, ratingPercent = {} } = stats;
+
+  // compact summary (top 3 genres)
+  const top3 = topGenres.slice(0, 3);
+
+  // For expanded view: show first N genres, with option to show all
+  const GENRE_PREVIEW = 6;
+  const visibleGenres = showAllGenres ? topGenres : topGenres.slice(0, GENRE_PREVIEW);
+
+  const leftRatings = [10, 9, 8, 7, 6];
+  const rightRatings = [5, 4, 3, 2, 1];
+
+  // optional: persist open state (uncomment if you want persistence)
+  // React.useEffect(() => {
+  //   const v = localStorage.getItem("stats_panel_open");
+  //   if (v !== null) setOpen(v === "1");
+  // }, []);
+  // React.useEffect(() => {
+  //   localStorage.setItem("stats_panel_open", open ? "1" : "0");
+  // }, [open]);
+
+  return (
+    <div className={`stats-panel dropdown-card ${open ? "open" : "closed"}`}>
+      <div className="stats-header">
+        <div>
+          <div className="stats-title">Your Watch Stats</div>
+          {/* when collapsed show small subtitle */}
+          {!open && (
+            <div className="stats-subtitle">
+              {top3.length ? (
+                <>
+                  <span className="mini-label">Top:</span>
+                  {top3.map(([name], i) => (
+                    <span key={name} className="genre-pill">{name}</span>
+                  ))}
+                </>
+              ) : (
+                <span className="stats-muted">No genre data</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="stats-controls">
+          <button
+            className="btn btn-ghost"
+            onClick={() => setOpen(s => !s)}
+            aria-expanded={open}
+          >
+            {open ? "Hide" : "Show stats"}
+          </button>
+        </div>
+      </div>
+
+      <div className="stats-body" style={{ display: open ? "block" : "none" }}>
+        <div className="stats-grid-compact compact-packed">
+          {/* LEFT: Top genres (fractional share) */}
+          <div className="stats-card small">
+            <div className="stats-label">Top genres (share)</div>
+            <ul className="genre-list compact">
+              {visibleGenres.map(([name, val]) => {
+                // show percentage-like number (val represents fractional count)
+                const pct = Math.round((val / Math.max(1, stats.totalWatched)) * 10000) / 100;
+                return (
+                  <li key={name} className="genre-row compact">
+                    <div className="genre-left">
+                      <div className="genre-name">{name}</div>
+                      <div className="genre-value">{pct}</div>
+                    </div>
+
+                    <div className="genre-bar-wrap small">
+                      <div className="genre-bar" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {topGenres.length > GENRE_PREVIEW && (
+              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                <button className="btn btn-ghost" onClick={() => setShowAllGenres(s => !s)}>
+                  {showAllGenres ? "Show fewer" : `Show all (${topGenres.length})`}
+                </button>
+                <div className="stats-muted" style={{ marginLeft: "auto" }}>
+                  total movies: {stats.totalWatched}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: Ratings distribution (compact two columns) */}
+          <div className="stats-card small">
+            <div className="stats-label">Ratings distribution (1–10)</div>
+            <div className="ratings-split compact">
+              <div className="ratings-col">
+                {leftRatings.map(r => {
+                  const count = ratingCount[r] || 0;
+                  const pct = ratingPercent[r] || 0;
+                  return (
+                    <div key={r} className="rating-row compact">
+                      <div className="rating-label">⭐{r}</div>
+                      <div className="rating-bar-wrap small">
+                        <div className="rating-bar" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="rating-count">{count}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="ratings-col">
+                {rightRatings.map(r => {
+                  const count = ratingCount[r] || 0;
+                  const pct = ratingPercent[r] || 0;
+                  return (
+                    <div key={r} className="rating-row compact">
+                      <div className="rating-label">⭐{r}</div>
+                      <div className="rating-bar-wrap small">
+                        <div className="rating-bar" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="rating-count">{count}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+*** src/components/WatchedRow.jsx ***
+import { useState } from "react";
+import { IMG_BASE } from "../utils/constants";
+
+export default function WatchedRow({
+    item,
+    onRemove,
+    onMoveToWishlist,
+    rating,
+    onSetRating
+}) {
+    const [open, setOpen] = useState(false);
+    const [hover, setHover] = useState(null);
+
+    const displayRating = hover ?? rating;
+    const starClass = (i) => {
+        const v = i + 1;
+        if (displayRating >= v) return "full";
+        if (displayRating >= v - 0.5) return "half";
+        return "";
+    };
+
+    return (
+        <div className="movie-card card">
+            <img
+                className="movie-poster"
+                src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
+                alt={item.title}
+            />
+
+            <div style={{ flex: 1 }}>
+                {/* HEADER */}
+                <div className="flex-between">
+                    <div>
+                        <h3>{item.title}</h3>
+                        <div className="year">
+                            {item.release_date?.slice(0, 4) || "—"}
+                        </div>
+                    </div>
+
+                    {/* RATING DISPLAY */}
+                    <div className="rating-display" onClick={() => setOpen(!open)}>
+                        {rating ? (
+                            <span
+                                style={{
+                                    background: "linear-gradient(90deg, #2196f3 0%, #21cbf3 100%)",
+                                    WebkitBackgroundClip: "text",
+                                    WebkitTextFillColor: "transparent",
+                                    fontWeight: 600,
+                                    display: "inline-block"
+                                }}
+                            >
+                                ★ {rating?.toFixed(1)}
+                            </span>
+                        ) : (
+                            <span className="star-icon muted">★</span>
+                        )}
+                    </div>
+                </div>
+
+                {/* ⭐ STAR PANEL */}
+                {open && (
+                    <div
+                        className="star-panel"
+                        onMouseLeave={() => setHover(null)}
+                    >
+                        {Array.from({ length: 10 }).map((_, i) => (
+                            <div key={i} className="star-slot">
+                                <span className={`star-visual ${starClass(i)}`}>
+                                    ★
+                                </span>
+
+                                {/* HALF */}
+                                <div
+                                    className="star-hit left"
+                                    onMouseEnter={() => setHover(i + 0.5)}
+                                    onClick={() => {
+                                        onSetRating(i + 0.5);
+                                        setOpen(false);
+                                    }}
+                                />
+
+                                {/* FULL */}
+                                <div
+                                    className="star-hit right"
+                                    onMouseEnter={() => setHover(i + 1)}
+                                    onClick={() => {
+                                        onSetRating(i + 1);
+                                        setOpen(false);
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                )}
+
+                {/* OVERVIEW */}
+                <p className="mt-8">{item.overview || "No description saved."}</p>
+
+                {/* ACTIONS */}
+                <div className="flex-gap-8 mt-8">
+                    <button className="btn" onClick={() => onRemove(item.id)}>
+                        Remove
+                    </button>
+
+                    <button className="btn" onClick={() => onMoveToWishlist(item.id)}>
+                        Move to Wishlist
+                    </button>
+
+                    <a
+                        className="btn btn-ghost"
+                        href={`https://www.themoviedb.org/movie/${item.tmdb_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Open
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+*** src/components/WishlistRow.jsx ***
+// src/components/WishlistRow.jsx
+import { IMG_BASE } from "../utils/constants.js";
+
+export default function WishlistRow({
+  item,
+  onRemove,
+  onMoveToWatched
+}) {
+  return (
+    <div className="movie-card wishlist-row">
+      <img
+        className="movie-poster"
+        src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
+        alt={item.title}
+      />
+
+      <div className="movie-info" style={{ flex: 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <h3 style={{ marginBottom: 6 }}>{item.title}</h3>
+            <div className="year">
+              {item.release_date ? item.release_date.slice(0, 4) : "—"}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn"
+              onClick={() => onMoveToWatched(item.id)}
+            >
+              Move to watched
+            </button>
+
+            <button
+              className="btn btn-ghost"
+              onClick={() => onRemove(item.id)}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 10, color: "var(--text-muted)" }}>
+          {item.overview || "No details available."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+

@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
-//import WatchedRow from "../components/WatchedRow";
+import FilterBar from "../components/FilterBar";
 import MediaGridCard from "../components/MediaGridCard";
-import MediaCard from "../components/MediaCard";
 import WatchedRow from "../components/WatchedRowV2";
 
-const ITEMS_PER_PAGE = 15; // tweak: 10 / 12 / 15
+const ITEMS_PER_PAGE = 15;
 
 export default function WatchlistPage({
   watched,
@@ -15,13 +14,15 @@ export default function WatchlistPage({
   onSetRating,
   onMoveToWishlist,
 }) {
-  // 🔹 local controls (watchlist-only)
+  // Media type filter
+  const [mediaFilter, setMediaFilter] = useState("all");
+  // local controls (watchlist-only)
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("all");
   const [sortBy, setSortBy] = useState("dateAdded");
   const [asc, setAsc] = useState(false);
 
-  // 🔹 pagination
+  // pagination
   const [page, setPage] = useState(1);
 
   /* ----------------------------------------
@@ -30,13 +31,18 @@ export default function WatchlistPage({
   const filteredWatched = useMemo(() => {
     let list = [...watched];
 
-    // 🔍 search
+    // Media type filter
+    if (mediaFilter !== "all") {
+      list = list.filter((m) => (m.media_type || "movie") === mediaFilter);
+    }
+
+    // search
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((m) => (m.title || "").toLowerCase().includes(q));
     }
 
-    // 🎭 genre
+    // genre
     if (genre !== "all") {
       const gid = Number(genre);
       list = list.filter(
@@ -44,7 +50,7 @@ export default function WatchlistPage({
       );
     }
 
-    // 🔃 sort
+    // sort
     list.sort((a, b) => {
       if (sortBy === "rating") {
         return asc
@@ -65,7 +71,7 @@ export default function WatchlistPage({
     });
 
     return list;
-  }, [watched, search, genre, sortBy, asc, ratings]);
+  }, [watched, mediaFilter, search, genre, sortBy, asc, ratings]);
 
   /* ----------------------------------------
        PAGINATION LOGIC
@@ -80,7 +86,7 @@ export default function WatchlistPage({
     return filteredWatched.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredWatched, page]);
 
-  // 🔄 reset page when filters change
+  // reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [search, genre, sortBy, asc]);
@@ -88,40 +94,30 @@ export default function WatchlistPage({
   /* ----------------------------------------
        RENDER
     ---------------------------------------- */
-  // viewMode is received as a prop. Do not redeclare it.
-
   return (
     <div className="container-max watchlist-page">
-      {/* 🔍 FILTER BAR */}
-      <div className="filter-bar" style={{ marginBottom: 18 }}>
-        <input
-          className="search-bar"
-          placeholder="Search watchlist..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* FILTER BAR */}
+      <FilterBar
+        mediaFilter={mediaFilter}
+        setMediaFilter={setMediaFilter}
+        search={search}
+        setSearch={setSearch}
+        genre={genre}
+        setGenre={setGenre}
+        genresMap={genresMap}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOptions={[
+          { value: "dateAdded", label: "Date added" },
+          { value: "rating", label: "Rating" },
+          { value: "title", label: "Title" },
+        ]}
+        asc={asc}
+        setAsc={setAsc}
+        placeholder="Search watchlist..."
+      />
 
-        <select value={genre} onChange={(e) => setGenre(e.target.value)}>
-          <option value="all">All genres</option>
-          {Object.entries(genresMap).map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
-            </option>
-          ))}
-        </select>
-
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="dateAdded">Date added</option>
-          <option value="rating">Rating</option>
-          <option value="title">Title</option>
-        </select>
-
-        <button className="btn" onClick={() => setAsc((a) => !a)}>
-          {asc ? "↑ Asc" : "↓ Desc"}
-        </button>
-      </div>
-
-      {/* 🎬 MOVIES: grid or list view */}
+      {/* MOVIES: grid or list view */}
       {paginatedWatched.length === 0 && (
         <div className="empty-state">No movies found</div>
       )}
@@ -157,7 +153,7 @@ export default function WatchlistPage({
         </>
       )}
 
-      {/* 📄 PAGINATION */}
+      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="pagination">
           <button
