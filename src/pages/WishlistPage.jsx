@@ -3,7 +3,8 @@ import FilterBar from "../components/FilterBar";
 import MediaCard from "../components/MediaCard";
 import MediaGridCard from "../components/MediaGridCard";
 
-const PAGE_SIZE = 12; // 🔧 change to 10 / 16 if you want
+const LIST_PAGE_SIZE = 12;
+const GRID_PAGE_SIZE = 24; // Double the list size
 
 export default function WishlistPage({
   viewMode,
@@ -72,15 +73,18 @@ export default function WishlistPage({
   }, [wishlist, mediaFilter, search, genre, sortBy]);
 
   // 🔹 Pagination math
+  // 🔹 Pagination math
+  const pageSize = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
+
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredWishlist.length / PAGE_SIZE)
+    Math.ceil(filteredWishlist.length / pageSize)
   );
 
   const pagedWishlist = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredWishlist.slice(start, start + PAGE_SIZE);
-  }, [filteredWishlist, page]);
+    const start = (page - 1) * pageSize;
+    return filteredWishlist.slice(start, start + pageSize);
+  }, [filteredWishlist, page, pageSize]);
 
   return (
     <div className="container-max">

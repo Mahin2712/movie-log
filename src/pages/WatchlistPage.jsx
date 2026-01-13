@@ -3,7 +3,8 @@ import FilterBar from "../components/FilterBar";
 import MediaGridCard from "../components/MediaGridCard";
 import WatchedRow from "../components/WatchedRowV2";
 
-const ITEMS_PER_PAGE = 15;
+const LIST_PAGE_SIZE = 15;
+const GRID_PAGE_SIZE = 30; // Double the list size
 
 export default function WatchlistPage({
   watched,
@@ -76,15 +77,20 @@ export default function WatchlistPage({
   /* ----------------------------------------
        PAGINATION LOGIC
     ---------------------------------------- */
+  /* ----------------------------------------
+       PAGINATION LOGIC
+    ---------------------------------------- */
+  const itemsPerPage = viewMode === "grid" ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
+
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredWatched.length / ITEMS_PER_PAGE)
+    Math.ceil(filteredWatched.length / itemsPerPage)
   );
 
   const paginatedWatched = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return filteredWatched.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredWatched, page]);
+    const start = (page - 1) * itemsPerPage;
+    return filteredWatched.slice(start, start + itemsPerPage);
+  }, [filteredWatched, page, itemsPerPage]);
 
   // reset page when filters change
   useEffect(() => {
@@ -145,6 +151,7 @@ export default function WatchlistPage({
               key={item.id}
               item={item}
               rating={ratings[item.id]}
+              genresMap={genresMap}
               onSetRating={(value) => onSetRating(item.id, value)}
               onRemove={onRemove}
               onMoveToWishlist={() => onMoveToWishlist(item)}

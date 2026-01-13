@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { IMG_BASE } from "../utils/constants";
 
 export default function MediaCard({
@@ -9,13 +10,22 @@ export default function MediaCard({
   onWishlist,
   onRemove,
 }) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Date Logic
   const year =
-    item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || "—";
+    item.year || item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || "—";
 
   // Days since added
   const daysAgo = item.dateAdded
     ? Math.floor((Date.now() - new Date(item.dateAdded).getTime()) / 86400000)
     : null;
+
+  // Description Truncation
+  const DESC_LIMIT = 150;
+  const description = item.overview || "No description available.";
+  const isLongDesc = description.length > DESC_LIMIT;
+  const showDesc = expanded ? description : description.slice(0, DESC_LIMIT) + (isLongDesc ? "..." : "");
 
   return (
     <div
@@ -24,98 +34,83 @@ export default function MediaCard({
         bg-linear-to-b from-[#0e1830] to-[#081026]
         hover:shadow-2xl hover:-translate-y-1
         transition-all duration-200
-        p-4 relative group
+        p-3 relative group flex gap-4
       "
     >
-      <div className="flex gap-4">
-        {/* Poster */}
-        <div className="relative shrink-0">
-          {/* Tag */}
-          <span className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-bold ${item.media_type === "movie" || !item.media_type ? "bg-blue-700/80" : "bg-purple-700/80"} text-white`}>
+      {/* Poster */}
+      <div className="relative shrink-0">
+        <img
+          src={item.poster_path ? IMG_BASE + item.poster_path : ""}
+          alt={item.title}
+          className="w-28 h-full object-cover rounded-lg shadow-lg"
+        />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col min-h-40 relative">
+
+        {/* Header: Tag Only */}
+        <div className="flex justify-between items-start mb-1">
+          <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${item.media_type === "movie" || !item.media_type ? "bg-blue-600" : "bg-purple-600"} text-white`}>
             {item.media_type === "movie" || !item.media_type ? "Movie" : "TV"}
           </span>
-          <img
-            src={item.poster_path ? IMG_BASE + item.poster_path : ""}
-            alt={item.title}
-            className="w-32.5 h-48.75 rounded-xl object-cover"
-          />
-
-          {/* REMOVED CORNER DAYS BADGE HERE TOO */}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Title and Metadata Header */}
-          <div className="flex justify-between items-start gap-3">
-            <div className="w-full">
-              <h3 className="text-xl font-semibold leading-tight">
-                {item.title || item.name}
-              </h3>
-
-              {/* Year + Days Row */}
-              <div className="flex items-center justify-between text-sm text-zinc-400 mt-1 w-full pr-2">
-                <span>{year}</span>
-
-                {/* Realigned Days Tag */}
-                {daysAgo !== null && (
-                  daysAgo < 1 ? (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold text-xs">New</span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-700/50 text-zinc-200 text-xs">{daysAgo}d ago</span>
-                  )
-                )}
-              </div>
-            </div>
+        {/* Title & Year */}
+        <div className="pr-12">
+          <h3 className="text-xl font-semibold leading-tight text-white">
+            {item.title || item.name}
+          </h3>
+          <div className="flex items-center text-sm text-zinc-400 mt-1">
+            <span>{year}</span>
+            {daysAgo !== null && (
+              daysAgo < 1 ? (
+                <span className="ml-3 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs shadow-sm">New</span>
+              ) : (
+                <span className="ml-3 px-2 py-0.5 rounded-full bg-zinc-800 border border-white/5 text-zinc-400 text-xs font-medium">{daysAgo}d ago</span>
+              )
+            )}
           </div>
+        </div>
 
-          {/* Overview */}
-          <p className="text-sm text-zinc-400 mt-2 line-clamp-3">
-            {item.overview || "No description available."}
-          </p>
+        {/* Expandable Description */}
+        <div className="mt-2 text-sm text-zinc-400 leading-relaxed">
+          <p className="inline">{showDesc}</p>
+          {isLongDesc && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="ml-2 text-blue-400 hover:text-blue-300 text-xs font-semibold hover:underline"
+            >
+              {expanded ? "Show less" : "Show more"}
+            </button>
+          )}
+        </div>
 
-          {/* Genres */}
-          {item.genre_ids?.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {item.genre_ids.slice(0, 4).map((gid) => (
-                <span
-                  key={gid}
-                  className="
-                    text-[11px] px-2 py-0.5 rounded-full
-                    bg-white/5 border border-white/10
-                  "
-                >
-                  {genresMap[gid] || "Genre"}
-                </span>
-              ))}
-            </div>
+        {/* Actions */}
+        <div className="flex gap-2 mt-auto pt-4">
+          {status !== "watched" && (
+            <button
+              className="btn btn-sm px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
+              onClick={() => onWatch?.(item)}
+            >
+              ✓ Watched
+            </button>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-2 mt-auto pt-4">
-            {status !== "watched" && (
-              <button
-                className="btn btn-primary"
-                onClick={() => onWatch?.(item)}
-              >
-                ✓ Watched
-              </button>
-            )}
+          {status !== "wishlist" && (
+            <button className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors" onClick={() => onWishlist?.(item)}>
+              ♡ Wishlist
+            </button>
+          )}
 
-            {status !== "wishlist" && (
-              <button className="btn" onClick={() => onWishlist?.(item)}>
-                ♡ Wishlist
-              </button>
-            )}
-
-            {status && (
-              <button
-                className="btn btn-ghost"
-                onClick={() => onRemove?.(item.id)}
-              >
-                Remove
-              </button>
-            )}
-          </div>
+          {status && (
+            <button
+              className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors"
+              onClick={() => onRemove?.(item.id)}
+            >
+              Remove
+            </button>
+          )}
         </div>
       </div>
     </div>
