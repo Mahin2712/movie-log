@@ -207,7 +207,9 @@ body {
 }
 
 /* movie card */
-.movie-card {
+/* Unify card size for watched and wishlist rows */
+.movie-card,
+.wishlist-row {
   background: linear-gradient(180deg, #0e1830, #0a1225);
   border: 1px solid var(--border-soft);
   border-radius: 14px;
@@ -216,6 +218,8 @@ body {
   gap: 16px;
   align-items: flex-start;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  min-height: 160px;
+  box-sizing: border-box;
 }
 
 .movie-card:hover {

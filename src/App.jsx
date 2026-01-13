@@ -457,7 +457,7 @@ export default function App() {
                 genresMap={genresMap}
                 ratings={ratings}
                 onRemove={removeFromWatched}
-                onRate={setRating}
+                onSetRating={setRating}
                 onMoveToWishlist={addWishlist}
               />
             </PageWrapper>

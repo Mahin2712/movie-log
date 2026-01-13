@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 //import WatchedRow from "../components/WatchedRow";
 import MediaGridCard from "../components/MediaGridCard";
 import MediaCard from "../components/MediaCard";
+import WatchedRow from "../components/WatchedRowV2";
 
 const ITEMS_PER_PAGE = 15; // tweak: 10 / 12 / 15
 
@@ -11,7 +12,7 @@ export default function WatchlistPage({
   genresMap,
   ratings,
   onRemove,
-  onRate,
+  onSetRating,
   onMoveToWishlist,
 }) {
   // 🔹 local controls (watchlist-only)
@@ -144,14 +145,13 @@ export default function WatchlistPage({
       ) : (
         <>
           {paginatedWatched.map((item) => (
-            <MediaCard
+            <WatchedRow
               key={item.id}
               item={item}
-              status="watched"
               rating={ratings[item.id]}
-              genresMap={genresMap}
-              onRemove={() => onRemove(item.id)}
-              onWishlist={onMoveToWishlist}
+              onSetRating={(value) => onSetRating(item.id, value)}
+              onRemove={onRemove}
+              onMoveToWishlist={() => onMoveToWishlist(item)}
             />
           ))}
         </>
