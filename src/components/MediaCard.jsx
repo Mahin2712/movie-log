@@ -24,74 +24,48 @@ export default function MediaCard({
         bg-linear-to-b from-[#0e1830] to-[#081026]
         hover:shadow-2xl hover:-translate-y-1
         transition-all duration-200
-        p-4
+        p-4 relative group
       "
     >
       <div className="flex gap-4">
         {/* Poster */}
         <div className="relative shrink-0">
+          {/* Tag */}
+          <span className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-bold ${item.media_type === "movie" || !item.media_type ? "bg-blue-700/80" : "bg-purple-700/80"} text-white`}>
+            {item.media_type === "movie" || !item.media_type ? "Movie" : "TV"}
+          </span>
           <img
             src={item.poster_path ? IMG_BASE + item.poster_path : ""}
             alt={item.title}
-            className="w-32.5 h-48.75
-                                rounded-xl object-cover"
+            className="w-32.5 h-48.75 rounded-xl object-cover"
           />
 
-          {/* Days added badge */}
-          {daysAgo !== null && (
-            <div
-              className="
-                            absolute top-0 right-0
-                            w-11 h-11
-                            overflow-hidden
-                            z-10
-                            "
-            >
-              {/* Triangle */}
-              <div
-                className="
-                    absolute top-0 right-0
-                    w-0 h-0
-                    border-t-44
-                    border-l-44
-                    border-l-transparent
-                    shadow-md
-                "
-                style={{
-                  borderTopColor: "rgba(88, 136, 255, 0.85)",
-                }}
-              />
-
-              {/* Number */}
-              <div
-                className="
-                    absolute top-0 right-0
-                    w-11 h-11
-                    flex items-start justify-end
-                    pr-1.5 pt-1.5
-                    text-[11px] font-extrabold text-white
-                    select-none
-                    pointer-events-none
-                "
-              >
-                {daysAgo}
-              </div>
-            </div>
-          )}
+          {/* REMOVED CORNER DAYS BADGE HERE TOO */}
         </div>
 
         {/* Content */}
         <div className="flex-1 flex flex-col">
-          {/* Title */}
-          <div className="flex justify-between gap-3">
-            <div>
+          {/* Title and Metadata Header */}
+          <div className="flex justify-between items-start gap-3">
+            <div className="w-full">
               <h3 className="text-xl font-semibold leading-tight">
                 {item.title || item.name}
               </h3>
-              <div className="text-sm text-zinc-400 mt-0.5">{year}</div>
-            </div>
 
-          
+              {/* Year + Days Row */}
+              <div className="flex items-center justify-between text-sm text-zinc-400 mt-1 w-full pr-2">
+                <span>{year}</span>
+
+                {/* Realigned Days Tag */}
+                {daysAgo !== null && (
+                  daysAgo < 1 ? (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold text-xs">New</span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-700/50 text-zinc-200 text-xs">{daysAgo}d ago</span>
+                  )
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Overview */}
@@ -127,7 +101,7 @@ export default function MediaCard({
               </button>
             )}
 
-            {status !== "wishlist"  && (
+            {status !== "wishlist" && (
               <button className="btn" onClick={() => onWishlist?.(item)}>
                 ♡ Wishlist
               </button>

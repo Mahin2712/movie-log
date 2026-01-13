@@ -16,68 +16,71 @@ export default function FilterBar({
     placeholder = "Search..."
 }) {
     return (
-        <div className="flex flex-col gap-4 mb-6">
-            {/* Row 1: Media Type Pills */}
-            <div className="flex items-center gap-2">
-                {["all", "movie", "tv"].map((type) => (
-                    <button
-                        key={type}
-                        onClick={() => setMediaFilter(type)}
-                        className={`
-              px-4 py-1.5 rounded-full text-sm font-medium transition-all
-              ${mediaFilter === type
-                                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40"
-                                : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                            }
-            `}
-                    >
-                        {type === "all" ? "All" : type === "movie" ? "Movies" : "TV Shows"}
-                    </button>
-                ))}
-            </div>
-
-            {/* Row 2: Search Input */}
-            <div className="relative group">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <svg className="w-4 h-4 text-zinc-500 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-1">
+            {/* Left Group: Media Pills + Search */}
+            <div className="flex items-center gap-4 flex-1 min-w-[300px]">
+                {/* Compact Pills */}
+                <div className="flex bg-zinc-900/80 p-1 rounded-full border border-zinc-800/60 shadow-inner">
+                    {["all", "movie", "tv"].map((type) => (
+                        <button
+                            key={type}
+                            onClick={() => setMediaFilter(type)}
+                            className={`
+                                px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200
+                                ${mediaFilter === type
+                                    ? "bg-blue-600 text-white shadow-md shadow-blue-900/30 ring-1 ring-blue-500/50"
+                                    : "text-zinc-400 hover:text-white hover:bg-white/5"
+                                }
+                            `}
+                        >
+                            {type === "all" ? "All" : type === "movie" ? "Movies" : "TV"}
+                        </button>
+                    ))}
                 </div>
-                <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={placeholder}
-                    className="
-            w-full bg-zinc-900/50 border border-zinc-800 rounded-xl py-3 pl-10 pr-4
-            text-zinc-200 placeholder-zinc-500 outline-none transition-all
-            focus:border-blue-500/50 focus:bg-zinc-900 focus:ring-1 focus:ring-blue-500/50
-          "
-                />
+
+                {/* Compact Search Input */}
+                <div className="relative group flex-1 max-w-sm">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <svg className="w-4 h-4 text-zinc-500 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder={placeholder}
+                        className="
+                            w-full h-10 bg-zinc-900/50 border border-zinc-800 rounded-full py-2 pl-10 pr-4
+                            text-sm text-zinc-200 placeholder-zinc-500 outline-none transition-all
+                            focus:border-blue-500/50 focus:bg-zinc-900 focus:ring-1 focus:ring-blue-500/50
+                        "
+                    />
+                </div>
             </div>
 
-            {/* Row 3: Filters & Sort */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* Right Group: Filters & Sort */}
+            <div className="flex items-center gap-3">
                 {/* Genre Dropdown */}
-                <div className="relative">
+                <div className="relative group">
                     <select
                         value={genre}
                         onChange={(e) => setGenre(e.target.value)}
                         className="
-              appearance-none bg-zinc-800/80 border border-zinc-700/50 rounded-lg
-              py-2 pl-3 pr-8 text-sm text-zinc-300 outline-none cursor-pointer
-              hover:bg-zinc-800 hover:border-zinc-600 transition-colors
-              focus:border-blue-500/50
-            "
+                            appearance-none h-10 bg-zinc-900/80 border border-zinc-800 rounded-lg
+                            pl-3 pr-8 text-sm text-zinc-400 font-medium outline-none cursor-pointer
+                            hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-700 transition-colors
+                            focus:border-blue-500/50 focus:text-white
+                        "
                     >
-                        <option value="all">All genres</option>
+                        <option value="all">All Genres</option>
                         {Object.entries(genresMap).map(([id, name]) => (
                             <option key={id} value={id}>
                                 {name}
                             </option>
                         ))}
                     </select>
-                    <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-500">
+                    <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-600 group-hover:text-zinc-400">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
@@ -85,16 +88,16 @@ export default function FilterBar({
                 </div>
 
                 {/* Sort Dropdown */}
-                <div className="relative">
+                <div className="relative group">
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
                         className="
-               appearance-none bg-zinc-800/80 border border-zinc-700/50 rounded-lg
-              py-2 pl-3 pr-8 text-sm text-zinc-300 outline-none cursor-pointer
-              hover:bg-zinc-800 hover:border-zinc-600 transition-colors
-              focus:border-blue-500/50
-            "
+                            appearance-none h-10 bg-zinc-900/80 border border-zinc-800 rounded-lg
+                            pl-3 pr-8 text-sm text-zinc-400 font-medium outline-none cursor-pointer
+                            hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-700 transition-colors
+                            focus:border-blue-500/50 focus:text-white
+                        "
                     >
                         {sortOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -102,23 +105,23 @@ export default function FilterBar({
                             </option>
                         ))}
                     </select>
-                    <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-500">
+                    <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-600 group-hover:text-zinc-400">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </div>
                 </div>
 
-                {/* Asc/Desc Toggle - Only show if supported */}
+                {/* Asc/Desc Toggle */}
                 {setAsc && (
                     <button
                         onClick={() => setAsc(!asc)}
                         className="
-              flex items-center justify-center w-9 h-9 rounded-lg
-              bg-zinc-800/80 border border-zinc-700/50 text-zinc-400
-              hover:bg-zinc-800 hover:text-zinc-200 hover:border-zinc-600
-              transition-all
-            "
+                            flex items-center justify-center w-10 h-10 rounded-lg
+                            bg-zinc-900/80 border border-zinc-800 text-zinc-400
+                            hover:bg-zinc-800 hover:text-white hover:border-zinc-700
+                            transition-all active:scale-95
+                        "
                         title={asc ? "Ascending" : "Descending"}
                     >
                         {asc ? (

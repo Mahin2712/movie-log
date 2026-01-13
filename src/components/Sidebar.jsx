@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
+// Use same key
 const STORAGE_KEY = "movieLog_v2_sidebar";
+
+const modernGradient = "linear-gradient(180deg, rgba(8, 12, 24, 0.95), rgba(0, 0, 0, 0.98))";
+const glassBorder = "1px solid rgba(255, 255, 255, 0.04)";
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -14,91 +18,137 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
   return (
     <aside
-      className={`h-screen bg-zinc-950 text-zinc-200 transition-all duration-300
-    ${collapsed ? "w-16" : "w-56"}
-    flex flex-col
-  `}
+      className={`relative h-screen flex flex-col transition-all duration-300 ease-in-out z-50
+        ${collapsed ? "w-20" : "w-64"}
+      `}
+      style={{
+        background: modernGradient,
+        borderRight: glassBorder,
+        backdropFilter: "blur(20px)",
+      }}
     >
+      {/* Glow Effect Top Left */}
+      <div className="absolute top-0 left-0 w-full h-32 bg-blue-600/5 blur-[80px] pointer-events-none" />
 
-      {/* Top / Logo */}
-      <div className="flex items-center justify-between p-4">
-        <span className="text-lg font-bold">
-          {collapsed ? "🎬" : "Movie-Log"}
-        </span>
+      {/* Header / Logo Area */}
+      <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} h-20 px-6`}>
+        {!collapsed ? (
+          <div className="flex flex-col">
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight">
+              Movie-Log
+            </span>
+            <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
+              v2.0 Beta
+            </span>
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-900/20 text-white">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+            </svg>
+          </div>
+        )}
 
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed(true)}
+            className="text-zinc-500 hover:text-white transition-colors p-1 rounded-md hover:bg-white/5"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Toggle Button for Collapsed Mode (Centered) */}
+      {collapsed && (
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="text-zinc-400 hover:text-white"
+          onClick={() => setCollapsed(false)}
+          className="mx-auto mb-6 text-zinc-500 hover:text-white transition-colors p-2 rounded-full hover:bg-white/5"
         >
-          {collapsed ? "➡️" : "⬅️"}
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+          </svg>
         </button>
-      </div>
+      )}
 
-      {/* Navigation */}
-      <nav className="mt-6 flex flex-col gap-1 px-2">
-        <NavItem
-          icon="🏠"
-          label="All"
-          active={activeTab === "all"}
-          collapsed={collapsed}
-          onClick={() => setActiveTab("all")}
-        />
+      {/* Navigation Links */}
+      <nav className="flex-1 flex flex-col gap-2 px-3 mt-2 overflow-y-auto no-scrollbar">
+        <div className="mb-2">
+          {!collapsed && <div className="px-4 text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">Menu</div>}
 
-        <NavItem
-          icon="📋"
-          label="Watchlist"
-          active={activeTab === "watchlist"}
-          collapsed={collapsed}
-          onClick={() => setActiveTab("watchlist")}
-        />
+          <NavItem
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>}
+            label="Home"
+            active={activeTab === "all"}
+            collapsed={collapsed}
+            onClick={() => setActiveTab("all")}
+          />
 
-        <NavItem
-          icon="💖"
-          label="Wishlist"
-          active={activeTab === "wishlist"}
-          collapsed={collapsed}
-          onClick={() => setActiveTab("wishlist")}
-        />
+          <NavItem
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
+            label="Watchlist"
+            active={activeTab === "watchlist"}
+            collapsed={collapsed}
+            onClick={() => setActiveTab("watchlist")}
+          />
 
-        <NavItem
-          icon="📊"
-          label="Insights"
-          active={activeTab === "insights"}
-          collapsed={collapsed}
-          onClick={() => setActiveTab("insights")}
-        />
+          <NavItem
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>}
+            label="Wishlist"
+            active={activeTab === "wishlist"}
+            collapsed={collapsed}
+            onClick={() => setActiveTab("wishlist")}
+          />
 
+          <NavItem
+            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>}
+            label="Insights"
+            active={activeTab === "insights"}
+            collapsed={collapsed}
+            onClick={() => setActiveTab("insights")}
+          />
+        </div>
       </nav>
-
-      {/* Bottom */}
-      <div className="mt-auto pb-4 flex flex-col gap-1 px-2">
-        <NavItem icon="⚙️" label="Settings" collapsed={collapsed} />
-        <NavItem icon="👤" label="Profile" collapsed={collapsed} />
-      </div>
     </aside>
   );
 }
 
 function NavItem({ icon, label, collapsed, active, onClick }) {
   return (
-    <div
+    <button
       onClick={onClick}
       className={`
-    flex items-center gap-3
-    rounded-md px-3 py-2
-    cursor-pointer select-none
-    transition-colors
-    ${active
-          ? "bg-zinc-800 text-white"
-          : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+         relative group flex items-center gap-4 w-full p-3 rounded-xl transition-all duration-200 ease-out
+        ${collapsed ? "justify-center" : ""}
+        ${active
+          ? "bg-blue-600/10 text-blue-400"
+          : "text-zinc-400 hover:text-white hover:bg-white/5"
         }
-  `}
+      `}
     >
+      {/* Active Indicator Line (Left) */}
+      {active && !collapsed && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-blue-500" />
+      )}
 
+      <span className={`transition-transform duration-200 ${active ? "scale-110" : "group-hover:scale-110"}`}>
+        {icon}
+      </span>
 
-      <span className="text-lg">{icon}</span>
-      {!collapsed && <span className="text-sm">{label}</span>}
-    </div>
+      {!collapsed && (
+        <span className={`text-sm font-medium ${active ? "text-blue-100" : "text-zinc-400 group-hover:text-zinc-200"}`}>
+          {label}
+        </span>
+      )}
+
+      {/* Hover tooltip for collapsed state */}
+      {collapsed && (
+        <div className="absolute left-full ml-4 px-2 py-1 bg-zinc-800 text-xs text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-white/10">
+          {label}
+        </div>
+      )}
+    </button>
   );
 }
-

@@ -584,7 +584,7 @@ export default function App() {
             )}
 
             {activeTab === "watchlist" && (
-              <PageWrapper title="Your Watchlist">
+              <PageWrapper title="Watchlist">
                 <WatchlistPage
                   viewMode={viewMode}
                   watched={displayedWatchlist}
@@ -598,7 +598,7 @@ export default function App() {
             )}
 
             {activeTab === "wishlist" && (
-              <PageWrapper title="Your Wishlist">
+              <PageWrapper title="Wishlist">
                 <WishlistPage
                   viewMode={viewMode}
                   wishlist={displayedWishlist}

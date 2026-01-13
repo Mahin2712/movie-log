@@ -19,20 +19,43 @@ export default function WatchedRow({
         return "";
     };
 
+    // Calculate days ago for list view logic if needed
+    const daysAgo = item.dateAdded
+        ? Math.floor((Date.now() - new Date(item.dateAdded).getTime()) / 86400000)
+        : null;
+
     return (
-        <div className="movie-card wishlist-row">
-            <img
-                className="movie-poster"
-                src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
-                alt={item.title}
-            />
+        <div className="movie-card wishlist-row group relative">
+            {/* Poster container with tag */}
+            <div className="relative shrink-0">
+                <span className={`absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-xs font-bold ${item.media_type === "movie" || !item.media_type ? "bg-blue-700/80" : "bg-purple-700/80"} text-white`}>
+                    {item.media_type === "movie" || !item.media_type ? "Movie" : "TV"}
+                </span>
+                <img
+                    className="movie-poster"
+                    src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
+                    alt={item.title}
+                />
+            </div>
 
             <div className="movie-info" style={{ flex: 1 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                     <div>
                         <h3 style={{ marginBottom: 6 }}>{item.title}</h3>
-                        <div className="year">
-                            {item.release_date ? item.release_date.slice(0, 4) : "—"}
+                        <div className="flex items-center gap-4 text-xs mt-1 w-full">
+                            <span className="text-zinc-400 year">
+                                {item.release_date ? item.release_date.slice(0, 4) : "—"}
+                            </span>
+
+                            {/* Days Ago Tag (Aligned Right in Flow or kept here? User asked to Realign days count tags on both paging to right side as the release year in the left side) */}
+                            {/* In list view, usually we want them spaced out. */}
+                            {daysAgo !== null && (
+                                daysAgo < 1 ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold">New</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 rounded-full bg-zinc-700/50 text-zinc-200">{daysAgo}d ago</span>
+                                )
+                            )}
                         </div>
                     </div>
 
@@ -59,6 +82,7 @@ export default function WatchedRow({
                 </div>
 
                 {/* ⭐ STAR PANEL */}
+                {/* ... existing star panel ... */}
                 {open && (
                     <div
                         className="star-panel"
@@ -102,7 +126,7 @@ export default function WatchedRow({
                     </button>
 
                     <button className="btn" onClick={() => onMoveToWishlist(item.id)}>
-                        Move to Wishlist
+                        Wishlist
                     </button>
 
                     <a
