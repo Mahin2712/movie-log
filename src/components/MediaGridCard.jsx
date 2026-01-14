@@ -10,14 +10,23 @@ export default function MediaGridCard({
   isInWatchlist,
   isInWishlist,
   onClick,
+  onSelect,
 }) {
+  const handleCardClick = (e) => {
+    if (onSelect && (item.media_type === "tv" || (item.id && String(item.id).includes("_tv")))) {
+      e.stopPropagation();
+      onSelect(item);
+      return;
+    }
+    onClick?.(e);
+  };
   // If mode is 'all' or 'search', use the standard "SearchResultCard" style (Hover Overlay)
   if (mode === "all" || mode === "search") {
     const fallback = "https://via.placeholder.com/300x450?text=No+Poster";
     return (
       <div
         className="carousel-card w-full h-full min-h-[240px] cursor-pointer"
-        onClick={onClick}
+        onClick={handleCardClick}
       >
         <img
           src={item.poster_path ? IMG_BASE + item.poster_path : fallback}
@@ -68,10 +77,30 @@ export default function MediaGridCard({
   }
 
   // --- WISHLIST / WATCHLIST MODE (Standard Grid Card) ---
+
+  // Year & Logic
+  let displayYear = item.year || item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || "";
+  if (item.media_type === "tv" || (item.id && String(item.id).includes("_tv"))) {
+    const start = item.first_air_date?.slice(0, 4);
+    const end = item.in_production ? "Present" : (item.last_air_date?.slice(0, 4) || "");
+    if (start) {
+      displayYear = end && end !== start ? `${start}-${end}` : start;
+    }
+  }
+
+  // Season Count
+  const seasonCount = item.number_of_seasons;
+  const seasonLabel = seasonCount ? `${seasonCount} Season${seasonCount === 1 ? '' : 's'}` : null;
+
+  // Progress
+  const progressPercent = item.progress?.percentage || 0;
+  const progressRadius = 14;
+  const progressCircumference = 2 * Math.PI * progressRadius;
+  const progressOffset = progressCircumference - (progressPercent / 100) * progressCircumference;
   return (
     <div
       className="group relative cursor-pointer transition-transform duration-200 hover:-translate-y-1 h-full flex flex-col"
-      onClick={onClick}
+      onClick={handleCardClick}
     >
       {/* Poster */}
       <div className="relative rounded-xl overflow-hidden">
@@ -110,6 +139,41 @@ export default function MediaGridCard({
             </svg>
           </button>
         )}
+
+
+        {/* Progress Ring Overlay (TV Only) */}
+        {(mode === 'watchlist' && (item.media_type === "tv" || (item.id && String(item.id).includes("_tv")))) && (
+          <div className="absolute bottom-2 right-2 flex items-center justify-center bg-black/60 rounded-full p-1 backdrop-blur-sm shadow-xl">
+            <div className="relative w-8 h-8">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="16"
+                  cy="16"
+                  r={progressRadius}
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  fill="transparent"
+                  className="text-zinc-700"
+                />
+                <circle
+                  cx="16"
+                  cy="16"
+                  r={progressRadius}
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  fill="transparent"
+                  strokeDasharray={progressCircumference}
+                  strokeDashoffset={progressOffset}
+                  strokeLinecap="round"
+                  className={progressPercent === 100 ? "text-emerald-500" : "text-blue-500"}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white">
+                {progressPercent}%
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Title */}
@@ -122,10 +186,10 @@ export default function MediaGridCard({
         <div className="mt-1 flex items-center justify-between text-xs w-full">
           <div className="flex items-center gap-2">
             <span className="text-zinc-400">
-              {item.year || item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || ""}
+              {displayYear}
             </span>
-            {item.media_type === "tv" && item.seasons && (
-              <span className="text-purple-400">{item.seasons} s</span>
+            {seasonLabel && (
+              <span className="text-purple-400 text-[10px] uppercase font-bold tracking-wide">{seasonLabel}</span>
             )}
           </div>
 
@@ -138,6 +202,6 @@ export default function MediaGridCard({
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 }

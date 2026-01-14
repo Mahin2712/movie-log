@@ -37,6 +37,7 @@ import WishlistPage from "./pages/WishlistPage.jsx";
 /* ---------- insights ------------------------ */
 import { getWatchStats } from "./utils/stats.js";
 import InsightsPage from "./pages/InsightsPage.jsx";
+import ShowDetailPage from "./components/ShowDetailPage.jsx";
 
 /**
  * Full App.jsx replacement
@@ -215,6 +216,19 @@ export default function App() {
       return {};
     }
   });
+
+  // Selected media for Detail View (TV Shows)
+  const [selectedMedia, setSelectedMedia] = useState(null);
+
+  const handleUpdateMedia = (updatedItem) => {
+    setWatched((prev) =>
+      prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
+    );
+    // Also update selectedMedia if it's the one being updated
+    if (selectedMedia && selectedMedia.id === updatedItem.id) {
+      setSelectedMedia(updatedItem);
+    }
+  };
 
 
 
@@ -603,6 +617,11 @@ export default function App() {
                   onRemove={removeFromWatched}
                   onSetRating={setRating}
                   onMoveToWishlist={addToWishlist}
+                  onSelect={(item) => {
+                    if (item.media_type === 'tv' || item.id.endsWith('_tv')) {
+                      setSelectedMedia(item);
+                    }
+                  }}
                 />
               </PageWrapper>
             )}
@@ -647,6 +666,16 @@ export default function App() {
           </main>
         )}
       </div>
+
+      {/* Detail View Overlay */}
+      {selectedMedia && (
+        <ShowDetailPage
+          show={selectedMedia}
+          apiKey={apiKey}
+          onClose={() => setSelectedMedia(null)}
+          onUpdateShow={handleUpdateMedia}
+        />
+      )}
     </div>
   );
 }

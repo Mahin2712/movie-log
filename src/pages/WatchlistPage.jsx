@@ -14,6 +14,7 @@ export default function WatchlistPage({
   onRemove,
   onSetRating,
   onMoveToWishlist,
+  onSelect,
 }) {
   // Media type filter
   const [mediaFilter, setMediaFilter] = useState("all");
@@ -140,6 +141,7 @@ export default function WatchlistPage({
                 item={item}
                 daysAgo={daysAgo}
                 mode="watchlist"
+                onSelect={() => onSelect?.(item)}
               />
             );
           })}
@@ -155,6 +157,7 @@ export default function WatchlistPage({
               onSetRating={(value) => onSetRating(item.id, value)}
               onRemove={onRemove}
               onMoveToWishlist={() => onMoveToWishlist(item)}
+              onSelect={() => onSelect?.(item)}
             />
           ))}
         </>
