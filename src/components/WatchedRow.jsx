@@ -11,10 +11,16 @@ export default function WatchedRow({
     const [open, setOpen] = useState(false);
     const [hover, setHover] = useState(null);
 
-    const displayRating = hover ?? rating;
+    // Prefer hover value if active, otherwise saved rating, defaulting to 0
+    const displayRating = hover !== null ? hover : (rating || 0);
+
     const starClass = (i) => {
         const v = i + 1;
         if (displayRating >= v) return "full";
+        // 4.5 >= 4.5 -> half? No. 
+        // If displayRating is 4.5. v=5.
+        // rating >= 5? False.
+        // rating >= 4.5? True. Return "half".
         if (displayRating >= v - 0.5) return "half";
         return "";
     };
@@ -39,7 +45,7 @@ export default function WatchedRow({
 
                     {/* RATING DISPLAY */}
                     <div className="rating-display" onClick={() => setOpen(!open)}>
-                        {rating ? (
+                        {displayRating > 0 ? (
                             <span
                                 style={{
                                     background: "linear-gradient(90deg, #2196f3 0%, #21cbf3 100%)",
@@ -49,7 +55,7 @@ export default function WatchedRow({
                                     display: "inline-block"
                                 }}
                             >
-                                ★ {rating?.toFixed(1)}
+                                ★ {displayRating.toFixed(1)}
                             </span>
                         ) : (
                             <span className="star-icon muted">★</span>
@@ -69,29 +75,30 @@ export default function WatchedRow({
                                     ★
                                 </span>
 
-                                {/* HALF */}
+                                {/* HALF STAR HITBOX (Left 50%) */}
                                 <div
                                     className="star-hit left"
                                     onMouseEnter={() => setHover(i + 0.5)}
                                     onClick={() => {
                                         onSetRating(i + 0.5);
                                         setOpen(false);
+                                        setHover(null);
                                     }}
                                 />
 
-                                {/* FULL */}
+                                {/* FULL STAR HITBOX (Right 50%) */}
                                 <div
                                     className="star-hit right"
                                     onMouseEnter={() => setHover(i + 1)}
                                     onClick={() => {
                                         onSetRating(i + 1);
                                         setOpen(false);
+                                        setHover(null);
                                     }}
                                 />
                             </div>
                         ))}
                     </div>
-
                 )}
 
                 {/* OVERVIEW */}

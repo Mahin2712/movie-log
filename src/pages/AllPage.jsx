@@ -18,7 +18,16 @@ export default function AllPage({
       {viewMode === "grid" ? (
         <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
           {popular.map((movie) => (
-            <MediaGridCard key={movie.id} item={movie} daysAgo={null} />
+            <MediaGridCard
+              key={movie.id}
+              item={movie}
+              daysAgo={null}
+              mode="all"
+              isInWatchlist={isWatched(movie.id)}
+              isInWishlist={isWishlisted(movie.id)}
+              onAddToWatchlist={onAddWatched}
+              onAddToWishlist={onToggleWishlist}
+            />
           ))}
         </div>
       ) : (

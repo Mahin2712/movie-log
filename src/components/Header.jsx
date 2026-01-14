@@ -1,3 +1,5 @@
+import ViewToggle from "./ViewToggle";
+
 export default function Header({
   title,
   search,
@@ -43,25 +45,7 @@ export default function Header({
         {/* Media type toggle - HIDDEN in favor of local search filters */}
         {/* <div className="flex bg-zinc-800 rounded-full p-1">...</div> */}
 
-        <div className="flex bg-zinc-800 rounded-full p-1">
-          <button
-            onClick={() =>
-              setViewMode(viewMode === "list" ? "grid" : "list")
-            }
-            className="
-                    px-4 py-1.5
-                    rounded-full
-                    text-sm font-medium
-                    bg-zinc-800
-                    text-zinc-200
-                    hover:bg-zinc-700
-                    transition
-                  "
-          >
-            {viewMode === "list" ? "List View" : "Grid View"}
-          </button>
-
-        </div>
+        <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
 
 
         {/* Settings */}

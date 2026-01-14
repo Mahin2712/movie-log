@@ -13,7 +13,9 @@ export default function WatchedRow({
     const [hover, setHover] = useState(null);
     const [expanded, setExpanded] = useState(false);
 
-    const displayRating = hover ?? rating;
+    // Prefer hover value if active, otherwise saved rating, defaulting to 0
+    const displayRating = hover !== null ? hover : (rating || 0);
+
     const starClass = (i) => {
         const v = i + 1;
         if (displayRating >= v) return "full";
@@ -53,7 +55,7 @@ export default function WatchedRow({
 
                 {/* RATING DISPLAY: Absolute Top Right for 'Higher' placement */}
                 <div className="absolute top-0 right-0 rating-display cursor-pointer hover:scale-105 transition-transform" onClick={() => setOpen(!open)}>
-                    {rating ? (
+                    {displayRating > 0 ? (
                         <span
                             style={{
                                 background: "linear-gradient(90deg, #2196f3 0%, #21cbf3 100%)",
@@ -65,7 +67,7 @@ export default function WatchedRow({
                                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
                             }}
                         >
-                            ★ {rating?.toFixed(1)}
+                            ★ {displayRating.toFixed(1)}
                         </span>
                     ) : (
                         <span className="star-icon muted text-zinc-600 hover:text-blue-400 text-2xl">★</span>
@@ -89,38 +91,54 @@ export default function WatchedRow({
 
                 {/* ⭐ STAR PANEL (Absolute) */}
                 {open && (
-                    <div
-                        className="star-panel absolute right-0 top-8 z-50 bg-gray-900 border border-white/10 shadow-2xl rounded-xl p-2 flex gap-1"
-                        onMouseLeave={() => setHover(null)}
-                    >
-                        {Array.from({ length: 10 }).map((_, i) => (
-                            <div key={i} className="star-slot relative cursor-pointer">
-                                <span className={`text-lg transition-colors ${starClass(i) === "full" ? "text-blue-400" : starClass(i) === "half" ? "text-blue-400/50" : "text-zinc-700"}`}>
-                                    ★
-                                </span>
+                    <>
+                        {/* Invisible backdrop to close panel when clicking outside */}
+                        <div
+                            className="fixed inset-0 z-40"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOpen(false);
+                            }}
+                        />
 
-                                {/* HALF */}
-                                <div
-                                    className="absolute top-0 left-0 w-1/2 h-full z-10"
-                                    onMouseEnter={() => setHover(i + 0.5)}
-                                    onClick={() => {
-                                        onSetRating(i + 0.5);
-                                        setOpen(false);
-                                    }}
-                                />
+                        <div
+                            className="star-panel absolute right-0 top-8 z-50 bg-zinc-900 border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-1"
+                            onMouseLeave={() => setHover(null)}
+                        >
+                            {Array.from({ length: 10 }).map((_, i) => (
+                                <div key={i} className="star-slot relative cursor-pointer flex items-center justify-center">
+                                    <span
+                                        className={`text-lg leading-none transition-colors ${starClass(i) === "full" ? "text-blue-400" : starClass(i) === "half" ? "text-blue-400/50" : "text-zinc-700 hover:text-zinc-500"
+                                            }`}
+                                    >
+                                        ★
+                                    </span>
 
-                                {/* FULL */}
-                                <div
-                                    className="absolute top-0 right-0 w-1/2 h-full z-10"
-                                    onMouseEnter={() => setHover(i + 1)}
-                                    onClick={() => {
-                                        onSetRating(i + 1);
-                                        setOpen(false);
-                                    }}
-                                />
-                            </div>
-                        ))}
-                    </div>
+                                    {/* HALF */}
+                                    <div
+                                        className="absolute top-0 left-0 w-1/2 h-full z-10"
+                                        onMouseEnter={() => setHover(i + 0.5)}
+                                        onClick={() => {
+                                            onSetRating(i + 0.5);
+                                            setOpen(false);
+                                            setHover(null);
+                                        }}
+                                    />
+
+                                    {/* FULL */}
+                                    <div
+                                        className="absolute top-0 right-0 w-1/2 h-full z-10"
+                                        onMouseEnter={() => setHover(i + 1)}
+                                        onClick={() => {
+                                            onSetRating(i + 1);
+                                            setOpen(false);
+                                            setHover(null);
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
 
                 {/* Description with 'Show More' */}

@@ -161,7 +161,9 @@ export default function App() {
 
   const [headerSearch, setHeaderSearch] = useState("");
   const [mediaType, setMediaType] = useState("all"); // all | movie | tv
-  const [viewMode, setViewMode] = useState("list"); // list | grid
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem("movieApp_viewMode") || "list";
+  }); // list | grid
 
   // Top genres from watched
   const getTopGenres = () => {
@@ -223,10 +225,10 @@ export default function App() {
   const [sortField, setSortField] = useState("dateAdded"); // title | rating | dateAdded | releaseDate
   const [sortAsc, setSortAsc] = useState(false);
   const isWatched = (movieId) => {
-    return watched.some((w) => w.id === movieId);
+    return watched.some((w) => w.id === movieId || w.tmdb_id == movieId);
   };
   const isWishlisted = (movieId) => {
-    return wishlist.some((w) => w.id === movieId);
+    return wishlist.some((w) => w.id === movieId || w.tmdb_id == movieId);
   };
   const [wishSort, setWishSort] = useState("newest");
 
@@ -276,6 +278,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("movieApp_refreshMins", String(refreshMins));
   }, [refreshMins]);
+
+  // Persist View Mode
+  useEffect(() => {
+    localStorage.setItem("movieApp_viewMode", viewMode);
+  }, [viewMode]);
 
   // Fetch genres (map + array)
   useEffect(() => {
@@ -367,17 +374,17 @@ export default function App() {
   // --- Add to Watchlist/Wishlist using universal model ---
   const addToWatchlist = (item) => {
     const norm = normalizeMedia(item);
-    if (!watched.some((w) => w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)) {
-      setWatched((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type))]);
-      setWishlist((prev) => prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)));
+    if (!watched.some((w) => w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)) {
+      setWatched((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type))]);
+      setWishlist((prev) => prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)));
     }
   };
 
   const addToWishlist = (item) => {
     const norm = normalizeMedia(item);
-    if (!wishlist.some((w) => w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)) {
-      setWishlist((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type))]);
-      setWatched((prev) => prev.filter((w) => !(w.tmdb_id === norm.tmdb_id && w.media_type === norm.media_type)));
+    if (!wishlist.some((w) => w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)) {
+      setWishlist((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type))]);
+      setWatched((prev) => prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)));
     }
   };
 
