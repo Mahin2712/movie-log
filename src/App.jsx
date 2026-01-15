@@ -653,8 +653,8 @@ export default function App() {
                   handleImportFile({
                     file,
                     apiKey,
-                    watched,
-                    setWatched,
+                    media: watched,
+                    importMedia: (items) => setWatched(items),
                     TMDB_BASE,
                   })
                 }
