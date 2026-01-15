@@ -649,13 +649,16 @@ export default function App() {
                 setApiKey={setApiKey}
                 autoRefresh={refreshMins}
                 setAutoRefresh={setRefreshMins}
-                onImport={(file) =>
+                onImport={(file, onProgress) =>
                   handleImportFile({
                     file,
                     apiKey,
-                    media: watched,
-                    importMedia: (items) => setWatched(items),
+                    watched,
+                    wishlist,
+                    setWatched,
+                    setWishlist,
                     TMDB_BASE,
+                    onProgress
                   })
                 }
                 onExportWatched={() => exportWatched({ watched, ratings })}

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 export default function SettingsModal({
   apiKey,
   setApiKey,
@@ -8,6 +10,43 @@ export default function SettingsModal({
   onExportWishlist,
   onClose
 }) {
+  const [importing, setImporting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [progress, setProgress] = useState(null);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file || null);
+    // Reset input value to allow re-selecting same file
+    e.target.value = '';
+  };
+
+  const handleClearFile = () => {
+    setSelectedFile(null);
+    setProgress(null);
+  };
+
+  const handleStartImport = async () => {
+    if (!selectedFile || importing) return;
+
+    setImporting(true);
+    setProgress({ processed: 0, total: 0, imported: 0, skipped: 0, failed: 0 });
+
+    try {
+      await onImport(selectedFile, (progressData) => {
+        setProgress(progressData);
+      });
+    } finally {
+      setImporting(false);
+      setSelectedFile(null);
+      setProgress(null);
+    }
+  };
+
+  const progressPercentage = progress && progress.total > 0
+    ? Math.round((progress.processed / progress.total) * 100)
+    : 0;
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -46,36 +85,131 @@ export default function SettingsModal({
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 2 }}>
             Supports old & new exports (<b>CSV</b> / <b>JSON</b>). Duplicates will be skipped.
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2 }}>
+
+          {/* FILE SELECTION ROW */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2, flexWrap: 'wrap' }}>
             <label htmlFor="import-file" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              background: 'linear-gradient(90deg,#4f7cff,#38bdf8)',
+              background: importing ? '#555' : 'linear-gradient(90deg,#4f7cff,#38bdf8)',
               color: '#fff',
               padding: '8px 18px',
               borderRadius: 10,
               fontWeight: 500,
               fontSize: 15,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(79,124,255,0.10)',
+              cursor: importing ? 'not-allowed' : 'pointer',
+              boxShadow: importing ? 'none' : '0 2px 8px rgba(79,124,255,0.10)',
               border: 'none',
               transition: 'background 0.2s, box-shadow 0.2s',
+              opacity: importing ? 0.6 : 1
             }}>
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-              Import File
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+              Choose File
               <input
                 id="import-file"
                 type="file"
                 accept=".json,.csv"
-                onChange={(e) => onImport(e.target.files[0])}
+                onChange={handleFileSelect}
+                disabled={importing}
                 style={{ display: 'none' }}
               />
             </label>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Choose a file to import
-            </span>
+
+            {/* FILE NAME DISPLAY */}
+            {selectedFile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                <span style={{
+                  fontSize: 13,
+                  color: 'var(--text-primary)',
+                  fontWeight: 500,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {selectedFile.name}
+                </span>
+                {!importing && (
+                  <button
+                    onClick={handleClearFile}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: 4,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* START IMPORT BUTTON */}
+          {selectedFile && (
+            <button
+              onClick={handleStartImport}
+              disabled={importing}
+              style={{
+                background: importing ? '#555' : 'linear-gradient(90deg,#10b981,#34d399)',
+                color: '#fff',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: 10,
+                fontWeight: 600,
+                fontSize: 15,
+                cursor: importing ? 'not-allowed' : 'pointer',
+                boxShadow: importing ? 'none' : '0 2px 8px rgba(16,185,129,0.15)',
+                transition: 'all 0.2s',
+                opacity: importing ? 0.6 : 1
+              }}
+            >
+              {importing ? '⌛ Importing...' : '▶ Start Import'}
+            </button>
+          )}
+
+          {/* PROGRESS BAR */}
+          {importing && progress && (
+            <div style={{ marginTop: 8 }}>
+              {/* Progress Bar */}
+              <div style={{
+                width: '100%',
+                height: 8,
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: 10,
+                overflow: 'hidden',
+                marginBottom: 8
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${progressPercentage}%`,
+                  background: 'linear-gradient(90deg,#4f7cff,#38bdf8)',
+                  transition: 'width 0.3s ease',
+                  borderRadius: 10
+                }} />
+              </div>
+
+              {/* Progress Text */}
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                  {progress.processed}/{progress.total} items ({progressPercentage}%)
+                </div>
+                <div>
+                  Imported: <span style={{ color: '#10b981' }}>{progress.imported}</span> •
+                  Skipped: <span style={{ color: '#f59e0b' }}>{progress.skipped}</span> •
+                  Failed: <span style={{ color: '#ef4444' }}>{progress.failed}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* EXPORT BUTTONS */}
           <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
             <button
               className="btn btn-primary"

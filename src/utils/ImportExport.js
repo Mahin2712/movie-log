@@ -3,10 +3,26 @@
 // ============================================================================
 
 /**
+ * Formats human-readable filename for exports
+ * Format: WatchedList_15-Jan-2026_142items.json
+ */
+function formatFileName(listType, count) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const date = new Date();
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+
+  const prefix = listType === 'watched' ? 'WatchedList' : 'Wishlist';
+  return `${prefix}_${day}-${month}-${year}_${count}items.json`;
+}
+
+/**
  * Serializes a media item for export, keeping only user-generated data
  * and minimal identifiers. All TMDB metadata will be re-fetched on import.
  */
-export function serializeForExport(item) {
+export function serializeForExport(item, listType = 'watched') {
   const base = {
     tmdb_id: item.tmdb_id,
     media_type: item.media_type,
@@ -14,7 +30,8 @@ export function serializeForExport(item) {
     year: item.year,
     status: item.status,
     rating: item.rating ?? null,
-    dateAdded: item.dateAdded
+    dateAdded: item.dateAdded,
+    listType: listType // NEW: metadata to preserve list context
   };
 
   // For TV shows, include compact progress
@@ -44,12 +61,13 @@ export function exportWatched({ watched, ratings }) {
     version: 3,
     schema: "minimal-v1",
     exportedAt: new Date().toISOString(),
+    listContext: "watched", // NEW: top-level list type metadata
     settings: {
       language: "en",
       theme: "dark"
     },
     library: watched.map(item => {
-      const serialized = serializeForExport(item);
+      const serialized = serializeForExport(item, 'watched');
       // Overlay rating from ratings map if exists
       if (ratings && ratings[item.id] !== undefined) {
         serialized.rating = ratings[item.id];
@@ -64,7 +82,7 @@ export function exportWatched({ watched, ratings }) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `watched_export_v3_${Date.now()}.json`;
+  a.download = formatFileName('watched', watched.length);
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -78,11 +96,12 @@ export function exportWishlist({ wishlist }) {
     version: 3,
     schema: "minimal-v1",
     exportedAt: new Date().toISOString(),
+    listContext: "wishlist", // NEW: top-level list type metadata
     settings: {
       language: "en",
       theme: "dark"
     },
-    library: wishlist.map(serializeForExport)
+    library: wishlist.map(item => serializeForExport(item, 'wishlist'))
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -91,7 +110,7 @@ export function exportWishlist({ wishlist }) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `wishlist_export_v3_${Date.now()}.json`;
+  a.download = formatFileName('wishlist', wishlist.length);
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -216,14 +235,16 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Main import function with hydration from TMDB
- * Handles v3 minimal exports
+ * Handles v3 minimal exports with concurrent batch processing
  */
 export async function hydrateFromTMDBAndImport({
   items,
   media,
   apiKey,
   importMedia,
-  TMDB_BASE
+  TMDB_BASE,
+  onProgress, // NEW: optional callback for progress updates
+  listContext // NEW: list context from export file
 }) {
   if (!items || items.length === 0) {
     alert("No items to import");
@@ -241,67 +262,101 @@ export async function hydrateFromTMDBAndImport({
   let failedCount = 0;
   const failedItems = [];
 
-  for (const item of items) {
-    const tmdbId = normalizeId(item.tmdb_id);
-    const mediaType = item.media_type || "movie";
+  const BATCH_SIZE = 5; // Process 5 items concurrently
+  const totalItems = items.length;
 
-    // Skip if no TMDB ID
-    if (!tmdbId) {
-      skippedCount++;
-      continue;
-    }
+  // Process items in batches
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
 
-    // Skip if already exists
-    const key = `${tmdbId}_${mediaType}`;
-    if (existingMap.has(key)) {
-      skippedCount++;
-      continue;
-    }
+    // Process batch items concurrently
+    const batchPromises = batch.map(async (item) => {
+      const tmdbId = normalizeId(item.tmdb_id);
+      const mediaType = item.media_type || "movie";
 
-    // Hydrate from TMDB
-    const result = await fetchTMDBDetails(tmdbId, mediaType, apiKey, TMDB_BASE);
+      // Skip if no TMDB ID
+      if (!tmdbId) {
+        return { status: 'skipped', reason: 'no_id' };
+      }
 
-    if (!result.success) {
-      // Hydration failed - keep minimal item
-      failedCount++;
-      failedItems.push({
-        ...item,
-        id: key,
-        _hydrationStatus: "partial",
-        // Keep minimal fields for display
-        poster_path: null,
-        overview: "Failed to load details from TMDB"
+      // Skip if already exists
+      const key = `${tmdbId}_${mediaType}`;
+      if (existingMap.has(key)) {
+        return { status: 'skipped', reason: 'duplicate', key };
+      }
+
+      // Hydrate from TMDB
+      const result = await fetchTMDBDetails(tmdbId, mediaType, apiKey, TMDB_BASE);
+
+      if (!result.success) {
+        // Hydration failed - create partial item
+        const partialItem = {
+          ...item,
+          id: key,
+          _hydrationStatus: "partial",
+          poster_path: null,
+          overview: "Failed to load details from TMDB"
+        };
+        return { status: 'failed', item: partialItem, key };
+      }
+
+      // Success - merge TMDB data with user overlay
+      const userOverlay = {
+        dateAdded: item.dateAdded,
+        rating: item.rating,
+        status: item.status || (item.listType === 'wishlist' ? 'wishlist' : undefined)
+      };
+
+      // Restore TV progress if present
+      if (mediaType === "tv" && item.progress) {
+        userOverlay.progress = deserializeProgress(item.progress);
+      }
+
+      const hydratedItem = tmdbToMediaItem(result.data, mediaType, userOverlay);
+      return { status: 'imported', item: hydratedItem, key };
+    });
+
+    // Wait for all items in batch to complete
+    const batchResults = await Promise.allSettled(batchPromises);
+
+    // Process batch results
+    batchResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const data = result.value;
+
+        if (data.status === 'imported') {
+          existingMap.set(data.key, data.item);
+          importedCount++;
+        } else if (data.status === 'failed') {
+          failedItems.push(data.item);
+          existingMap.set(data.key, data.item);
+          failedCount++;
+        } else if (data.status === 'skipped') {
+          skippedCount++;
+        }
+      } else {
+        // Promise rejection (shouldn't happen but handle gracefully)
+        skippedCount++;
+      }
+    });
+
+    // Report progress
+    const processed = Math.min(i + BATCH_SIZE, totalItems);
+    if (onProgress) {
+      onProgress({
+        processed,
+        total: totalItems,
+        imported: importedCount,
+        skipped: skippedCount,
+        failed: failedCount
       });
+    }
 
-      // Rate limit even on failures
+    // Rate limit: delay between batches (not per item)
+    if (i + BATCH_SIZE < items.length) {
       await delay(200);
-      continue;
     }
-
-    // Success - merge TMDB data with user overlay
-    const userOverlay = {
-      dateAdded: item.dateAdded,
-      rating: item.rating,
-      status: item.status
-    };
-
-    // Restore TV progress if present
-    if (mediaType === "tv" && item.progress) {
-      userOverlay.progress = deserializeProgress(item.progress);
-    }
-
-    const hydratedItem = tmdbToMediaItem(result.data, mediaType, userOverlay);
-    existingMap.set(key, hydratedItem);
-    importedCount++;
-
-    // Rate limit: 200ms between requests
-    await delay(200);
   }
-
-  // Add failed items (partial hydration)
-  failedItems.forEach(item => {
-    existingMap.set(item.id, item);
-  });
 
   // Update store
   importMedia(Array.from(existingMap.values()));
@@ -408,13 +463,17 @@ export async function legacyImport({
 /**
  * Main entry point for file import
  * Detects schema version and routes to appropriate importer
+ * Returns the detected list context to route items to correct list
  */
 export async function handleImportFile({
   file,
   apiKey,
-  media,
-  importMedia,
-  TMDB_BASE
+  watched,
+  wishlist,
+  setWatched,
+  setWishlist,
+  TMDB_BASE,
+  onProgress
 }) {
   if (!file || !apiKey) {
     alert("Missing file or TMDB API key");
@@ -424,14 +483,16 @@ export async function handleImportFile({
   const text = await file.text();
   let items = [];
   let isLegacy = false;
+  let listContext = "watched"; // Default to watched for legacy imports
 
   if (file.name.endsWith(".json")) {
     const data = JSON.parse(text);
 
     // Detect schema version
     if (data.schema === "minimal-v1" && data.library) {
-      // V3 minimal export
+      // V3 minimal export - has listContext metadata
       items = data.library;
+      listContext = data.listContext || "watched";
       isLegacy = false;
     } else if (data.items || data.movies || data.tv) {
       // V2 or older - legacy format
@@ -461,22 +522,28 @@ export async function handleImportFile({
     isLegacy = true;
   }
 
+  // Determine which list to use based on context
+  const targetList = listContext === "wishlist" ? wishlist : watched;
+  const setTargetList = listContext === "wishlist" ? setWishlist : setWatched;
+
   // Route to appropriate importer
   if (isLegacy) {
     await legacyImport({
       items,
-      media,
+      media: targetList,
       apiKey,
-      importMedia,
+      importMedia: setTargetList,
       TMDB_BASE
     });
   } else {
     await hydrateFromTMDBAndImport({
       items,
-      media,
+      media: targetList,
       apiKey,
-      importMedia,
-      TMDB_BASE
+      importMedia: setTargetList,
+      TMDB_BASE,
+      onProgress,
+      listContext
     });
   }
 }
