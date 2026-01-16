@@ -152,7 +152,6 @@ export default function App() {
   // Media Store
   const { media, addMedia, updateStatus, rateMedia, removeMedia, importMedia } =
     useMediaStore();
-  console.log("Media v2:", media);
 
   // Discovery / main content
   const [popular, setPopular] = useState([]);

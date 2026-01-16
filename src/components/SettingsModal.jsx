@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import HelpIcon from './HelpIcon';
+import ApiKeyHelpModal from './ApiKeyHelpModal';
 
 export default function SettingsModal({
   apiKey,
@@ -13,6 +15,7 @@ export default function SettingsModal({
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -53,15 +56,20 @@ export default function SettingsModal({
         <h3 style={{ marginTop: 0 }}>Settings</h3>
 
         {/* API KEY */}
-        <label style={{ display: "block", marginTop: 8, fontSize: 13, color: "var(--text-muted)" }}>
-          TMDB API Key
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
+          <label style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            TMDB API Key
+          </label>
+          <HelpIcon onClick={() => setShowHelp(true)} />
+        </div>
         <input
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder="Paste TMDB v3 API key"
           style={{ width: "100%", padding: 8, borderRadius: 8, marginTop: 6 }}
         />
+
+        {showHelp && <ApiKeyHelpModal onClose={() => setShowHelp(false)} />}
 
         {/* AUTO REFRESH */}
         <label style={{ display: "block", marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
