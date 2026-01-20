@@ -1,4 +1,7 @@
 import ViewToggle from "./ViewToggle";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import ProfilePanel from "./ProfilePanel";
 
 export default function Header({
   title,
@@ -10,6 +13,9 @@ export default function Header({
   setViewMode,
   onOpenSettings
 }) {
+  const { authUser } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
+
   return (
     <header className="h-16 flex items-center gap-4 px-6
       border-b border-zinc-800 bg-zinc-900"
@@ -57,14 +63,30 @@ export default function Header({
           ⚙️
         </button>
 
-        {/* Profile (placeholder) */}
-        <button
-          className="btn btn-ghost"
-          title="Profile"
-          onClick={() => console.log("Profile clicked")}
-        >
-          👤
-        </button>
+        {/* Profile */}
+        <div className="relative">
+          <button
+            className="btn btn-ghost rounded-full p-1 h-10 w-10 overflow-hidden border border-transparent hover:border-zinc-600 transition-all"
+            title="Profile"
+            onClick={() => setShowProfile(!showProfile)}
+          >
+            {authUser?.photoURL ? (
+              <img
+                src={authUser.photoURL}
+                alt="Profile"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-lg">
+                👤
+              </div>
+            )}
+          </button>
+
+          {showProfile && (
+            <ProfilePanel onClose={() => setShowProfile(false)} />
+          )}
+        </div>
       </div>
     </header>
   );
