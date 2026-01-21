@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { libraryService } from "./sync/libraryService";
+import { useAuth } from "./context/AuthContext";
 import { useMediaStore } from "./state/useMediaStore";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
@@ -71,11 +73,11 @@ export default function App() {
       if (!Number.isFinite(year)) year = null;
     }
     return {
-      id: `${item.id}_${mediaType}`,
+      id: `${mediaType}_${item.id}`,
       tmdb_id: item.id,
       media_type: mediaType,
       title: item.title || item.name || "",
-      original_title: item.original_title || item.original_name || undefined,
+      original_title: item.original_title || item.original_name || null,
       year,
       poster_path: item.poster_path || null,
       backdrop_path: item.backdrop_path || null,
@@ -86,15 +88,10 @@ export default function App() {
       overview: item.overview || "",
       dateAdded: new Date().toISOString(),
       rating: item.rating ?? null,
-      seasons: item.number_of_seasons || undefined,
-      episodes: item.number_of_episodes || undefined,
+      seasons: item.number_of_seasons || null,
+      episodes: item.number_of_episodes || null,
     };
   }, []);
-
-  // Settings / Keys
-  const [apiKey, setApiKey] = useState(
-    () => localStorage.getItem("movieApp_apiKey") || ""
-  );
 
   // --- Global Search State ---
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,16 +111,10 @@ export default function App() {
     const controller = new AbortController();
 
     const timeout = setTimeout(async () => {
-      if (!apiKey) return;
       try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(
-            searchQuery
-          )}`,
-          { signal: controller.signal }
-        );
+        const { fetchFromTMDB } = await import("./services/tmdbClient");
+        const data = await fetchFromTMDB("/search/multi", { query: searchQuery }, { signal: controller.signal });
 
-        const data = await res.json();
         const normalized = (data.results || [])
           .filter((item) => item.media_type !== "person")
           .map(normalizeMedia);
@@ -141,7 +132,7 @@ export default function App() {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [searchQuery, apiKey, normalizeMedia]);
+  }, [searchQuery, normalizeMedia]);
 
   // Exit search function
   const exitSearchMode = () => {
@@ -193,39 +184,81 @@ export default function App() {
   const [genresMap, setGenresMap] = useState({});
   const [genresArray, setGenresArray] = useState([]); // [{id, name}, ...]
 
-  // Watched/wishlist/ratings (unified media model)
-  const [watched, setWatched] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("movieApp_watched") || "[]");
-    } catch {
-      return [];
-    }
-  });
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("movieApp_wishlist") || "[]");
-    } catch {
-      return [];
-    }
-  });
-  const [ratings, setRatings] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("movieApp_ratings") || "{}");
-    } catch {
-      return {};
-    }
-  });
+  // Library State (Single Source of Truth)
+  const [library, setLibrary] = useState({});
+  const [libraryLoading, setLibraryLoading] = useState(true);
+  const { authUser, authLoading } = useAuth();
+
+  // Load/Sync Library on Auth Change
+  useEffect(() => {
+    if (authLoading) return;
+
+    const initLibrary = async () => {
+      // 1. Instant Bootstrap from Local Cache
+      const { readLocalLibrary } = await import("./storage/localStore");
+      const local = readLocalLibrary();
+      if (Object.keys(local).length > 0) {
+        setLibrary(local);
+      }
+
+      // 2. Determine if we should show "Blocking" loader
+      // We block ONLY on first login (no sync timestamp) or if migration is happening
+      const lastSyncAt = localStorage.getItem(`lastSyncAt_${authUser?.uid}`);
+      const isFirstLogin = authUser && !lastSyncAt;
+
+      if (isFirstLogin) {
+        setLibraryLoading(true);
+      }
+
+      try {
+        const lib = await libraryService.sync();
+        setLibrary(lib || {});
+      } catch (error) {
+        console.error("Library sync failed:", error);
+      } finally {
+        setLibraryLoading(false);
+      }
+    };
+
+    initLibrary();
+  }, [authUser, authLoading]);
+
+  // Derived States
+  const watched = React.useMemo(() =>
+    Object.values(library).filter(item =>
+      ['watched', 'completed', 'watching'].includes(item.status)
+    ), [library]);
+
+  const wishlist = React.useMemo(() =>
+    Object.values(library).filter(item =>
+      item.status === 'wishlist'
+    ), [library]);
+
+  const ratings = React.useMemo(() => {
+    const map = {};
+    Object.values(library).forEach(item => {
+      if (item.rating) map[item.id] = item.rating;
+    });
+    return map;
+  }, [library]);
 
   // Selected media for Detail View (TV Shows)
   const [selectedMedia, setSelectedMedia] = useState(null);
 
-  const handleUpdateMedia = (updatedItem) => {
-    setWatched((prev) =>
-      prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
-    );
+  const handleUpdateMedia = async (updatedItem) => {
+    // Update LibraryService
+    // status is required. If updatedItem comes from detail page, it might have it?
+    // Usually DetailPage updates progress or status.
+    // We assume updatedItem is the full item object.
+    const saved = await libraryService.saveItem(updatedItem);
+    setLibrary(prev => ({
+      ...prev,
+      [saved.id]: saved
+    }));
+
     // Also update selectedMedia if it's the one being updated
     if (selectedMedia && selectedMedia.id === updatedItem.id) {
-      setSelectedMedia(updatedItem);
+      setSelectedMedia(saved);
     }
   };
 
@@ -276,18 +309,17 @@ export default function App() {
     Number(localStorage.getItem("movieApp_refreshMins") || "30")
   );
   // Persist to localStorage
+  // Dev Helper for Firestore Cleanup
   useEffect(() => {
-    localStorage.setItem("movieApp_apiKey", apiKey || "");
-  }, [apiKey]);
-  useEffect(() => {
-    localStorage.setItem("movieApp_watched", JSON.stringify(watched));
-  }, [watched]);
-  useEffect(() => {
-    localStorage.setItem("movieApp_wishlist", JSON.stringify(wishlist));
-  }, [wishlist]);
-  useEffect(() => {
-    localStorage.setItem("movieApp_ratings", JSON.stringify(ratings));
-  }, [ratings]);
+    if (authUser) {
+      window.cleanupFirestore = async () => {
+        const { cleanupFirestoreTypes } = await import("./sync/migration");
+        await cleanupFirestoreTypes(authUser);
+        alert("Cleanup Complete. Refresh page.");
+      };
+    }
+  }, [authUser]);
+  // Removed manual localStorage effects for library - handled by LibraryService/Adapters
   useEffect(() => {
     localStorage.setItem("movieApp_refreshMins", String(refreshMins));
   }, [refreshMins]);
@@ -299,36 +331,36 @@ export default function App() {
 
   // Fetch genres (map + array)
   useEffect(() => {
-    if (!apiKey) return;
-    fetch(`${TMDB_BASE}/genre/movie/list?api_key=${apiKey}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const map = {};
-        const arr = (data.genres || []).map((g) => ({
-          id: g.id,
-          name: g.name,
-        }));
-        (data.genres || []).forEach((g) => (map[g.id] = g.name));
-        setGenresMap(map);
-        setGenresArray(arr);
-      })
-      .catch(() => {
-        setGenresMap({});
-        setGenresArray([]);
-      });
-  }, [apiKey]);
+    import("./services/tmdbClient").then(({ fetchFromTMDB }) => {
+      fetchFromTMDB("/genre/movie/list")
+        .then((data) => {
+          const map = {};
+          const arr = (data.genres || []).map((g) => ({
+            id: g.id,
+            name: g.name,
+          }));
+          (data.genres || []).forEach((g) => (map[g.id] = g.name));
+          setGenresMap(map);
+          setGenresArray(arr);
+        })
+        .catch(() => {
+          setGenresMap({});
+          setGenresArray([]);
+        });
+    });
+  }, []);
 
   // Fetch popular for carousel
   useEffect(() => {
-    if (!apiKey) return;
-    fetch(`${TMDB_BASE}/movie/popular?api_key=${apiKey}&page=1`)
-      .then((r) => r.json())
-      .then((data) => setPopular(data.results || []))
-      .catch(() => setPopular([]));
-  }, [apiKey]);
+    import("./services/tmdbClient").then(({ fetchFromTMDB }) => {
+      fetchFromTMDB("/movie/popular", { page: 1 })
+        .then((data) => setPopular(data.results || []))
+        .catch(() => setPopular([]));
+    });
+  }, []);
 
   useEffect(() => {
-    if (!apiKey || watched.length === 0) {
+    if (watched.length === 0) {
       setRecommended([]);
       return;
     }
@@ -338,11 +370,12 @@ export default function App() {
       if (topGenres.length === 0) return;
 
       try {
-        const url = `${TMDB_BASE}/discover/movie?api_key=${apiKey}&with_genres=${topGenres.join(
-          ","
-        )}&sort_by=popularity.desc&page=1`;
-        const res = await fetch(url);
-        const data = await res.json();
+        const { fetchFromTMDB } = await import("./services/tmdbClient");
+        const data = await fetchFromTMDB("/discover/movie", {
+          with_genres: topGenres.join(","),
+          sort_by: "popularity.desc",
+          page: 1
+        });
 
         const filtered = (data.results || []).filter(
           (m) =>
@@ -357,22 +390,21 @@ export default function App() {
     };
 
     fetchRecommendations();
-  }, [apiKey, watched, wishlist]);
+  }, [watched, wishlist]);
 
   // main search (discovery)
   const runMainSearch = async (q) => {
-    if (!apiKey) return;
     if (!q || q.trim().length === 0) {
       setDiscoverResults([]);
       return;
     }
     setLoadingDiscover(true);
     try {
-      const url = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(
-        q
-      )}&page=1`;
-      const r = await fetch(url);
-      const data = await r.json();
+      const { fetchFromTMDB } = await import("./services/tmdbClient");
+      const data = await fetchFromTMDB("/search/movie", {
+        query: q,
+        page: 1
+      });
       setDiscoverResults(data.results || []);
     } catch (e) {
       console.error(e);
@@ -385,33 +417,75 @@ export default function App() {
   // ---------- helpers: watched/wishlist/ratings ----------
 
   // --- Add to Watchlist/Wishlist using universal model ---
-  const addToWatchlist = (item) => {
+  // --- Add to Watchlist/Wishlist using universal model ---
+  const addToWatchlist = async (item) => {
     const norm = normalizeMedia(item);
-    if (!watched.some((w) => w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)) {
-      setWatched((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type))]);
-      setWishlist((prev) => prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)));
+    // Move to 'watched' (or 'watching' if it was that? For simplicity force 'watched' for now unless we track 'watching' explicitly in UI)
+    // Actually, distinct between movie/tv is handled in mergeRules, but here we can set default.
+    // Use 'watched' for all adds to watched row.
+    const newItem = {
+      ...norm,
+      status: norm.media_type === 'tv' ? 'watching' : 'watched', // Default status
+      updatedAt: new Date().toISOString()
+    };
+
+    const saved = await libraryService.saveItem(newItem);
+    setLibrary(prev => ({ ...prev, [saved.id]: saved }));
+  };
+
+  const addToWishlist = async (item) => {
+    const norm = normalizeMedia(item);
+    const newItem = {
+      ...norm,
+      status: 'wishlist',
+      updatedAt: new Date().toISOString()
+    };
+
+    const saved = await libraryService.saveItem(newItem);
+    setLibrary(prev => ({ ...prev, [saved.id]: saved }));
+  };
+
+  const removeFromWatched = async (id) => {
+    // Actually remove from library or set status to removed?
+    // Since we derived lists from library, we can just "delete" from local lib and call service.
+    const item = library[id];
+    if (item) {
+      // If we want to fully delete:
+      await libraryService.removeItem(item.media_type, item.tmdb_id);
+      setLibrary(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
-  const addToWishlist = (item) => {
-    const norm = normalizeMedia(item);
-    if (!wishlist.some((w) => w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)) {
-      setWishlist((prev) => [norm, ...prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type))]);
-      setWatched((prev) => prev.filter((w) => !(w.tmdb_id == norm.tmdb_id && w.media_type === norm.media_type)));
+  const removeFromWishlist = async (id) => {
+    const item = library[id];
+    if (item) {
+      await libraryService.removeItem(item.media_type, item.tmdb_id);
+      setLibrary(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
-
-  const removeFromWatched = (id) =>
-    setWatched((p) => p.filter((x) => x.id !== id));
-  const removeFromWishlist = (id) =>
-    setWishlist((p) => p.filter((x) => x.id !== id));
 
   // rating setter
-  const setRating = (mediaId, value) => {
-    setRatings((r) => ({
-      ...r,
-      [mediaId]: value === "" ? null : Number(value),
-    }));
+  // rating setter
+  const setRating = async (mediaId, value) => {
+    const item = library[mediaId];
+    if (!item) return;
+
+    const newItem = {
+      ...item,
+      rating: value === "" ? null : Number(value),
+      updatedAt: new Date().toISOString()
+    };
+
+    const saved = await libraryService.saveItem(newItem);
+    setLibrary(prev => ({ ...prev, [saved.id]: saved }));
   };
 
   // watchlist build: filter/search/sort
@@ -508,6 +582,15 @@ export default function App() {
 
       {/* Main area */}
       <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Loading Overlay */}
+        {(authLoading || libraryLoading) && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-zinc-400 font-medium animate-pulse">Syncing Library...</p>
+            </div>
+          </div>
+        )}
         {/* Header: global search bar */}
         <Header
           title="Movie-Log v2"
@@ -644,18 +727,13 @@ export default function App() {
             )}
             {showSettings && (
               <SettingsModal
-                apiKey={apiKey}
-                setApiKey={setApiKey}
                 autoRefresh={refreshMins}
                 setAutoRefresh={setRefreshMins}
                 onImport={(file, onProgress) =>
                   handleImportFile({
                     file,
-                    apiKey,
                     watched,
                     wishlist,
-                    setWatched,
-                    setWishlist,
                     TMDB_BASE,
                     onProgress
                   })
@@ -673,7 +751,6 @@ export default function App() {
       {selectedMedia && (
         <ShowDetailPage
           show={selectedMedia}
-          apiKey={apiKey}
           onClose={() => setSelectedMedia(null)}
           onUpdateShow={handleUpdateMedia}
         />

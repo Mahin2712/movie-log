@@ -26,7 +26,7 @@ export default function WatchedRow({
 
     // Formatted Year Logic
     let displayYear = item.year || item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || "—";
-    if (item.media_type === 'tv' || String(item.id).includes('_tv')) {
+    if (item.media_type === 'tv' || String(item.id).startsWith('tv_')) {
         const start = item.first_air_date?.slice(0, 4);
         const end = item.in_production ? "Present" : (item.last_air_date?.slice(0, 4) || "");
         if (start) {
@@ -61,7 +61,7 @@ export default function WatchedRow({
             <div className="relative shrink-0">
                 <img
                     className="w-28 h-full rounded-lg object-cover shadow-lg"
-                    src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
+                    src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : null}
                     alt={item.title}
                 />
             </div>
@@ -101,7 +101,7 @@ export default function WatchedRow({
                         <h3 className="text-xl font-semibold leading-tight text-white">{item.title}</h3>
 
                         {/* Progress Ring (Inline) */}
-                        {(item.media_type === 'tv' || String(item.id).includes('_tv')) && (
+                        {(item.media_type === 'tv' || String(item.id).startsWith('tv_')) && (
                             <div className="relative w-8 h-8 shrink-0">
                                 <svg className="w-full h-full transform -rotate-90">
                                     <circle
@@ -226,7 +226,7 @@ export default function WatchedRow({
                     </button>
 
 
-                    {(item.media_type === 'tv' || String(item.id).includes('_tv')) && (
+                    {(item.media_type === 'tv' || String(item.id).startsWith('tv_')) && (
                         <button
                             className="btn btn-sm px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
                             onClick={() => onSelect?.(item)}

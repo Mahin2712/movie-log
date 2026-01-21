@@ -13,7 +13,7 @@ export default function MediaGridCard({
   onSelect,
 }) {
   const handleCardClick = (e) => {
-    if (onSelect && (item.media_type === "tv" || (item.id && String(item.id).includes("_tv")))) {
+    if (onSelect && (item.media_type === "tv" || (item.id && String(item.id).startsWith("tv_")))) {
       e.stopPropagation();
       onSelect(item);
       return;
@@ -28,12 +28,18 @@ export default function MediaGridCard({
         className="carousel-card w-full h-full min-h-[240px] cursor-pointer"
         onClick={handleCardClick}
       >
-        <img
-          src={item.poster_path ? IMG_BASE + item.poster_path : fallback}
-          alt={item.title || item.name}
-          loading="lazy"
-          className="rounded-t-xl"
-        />
+        {item.poster_path ? (
+          <img
+            src={IMG_BASE + item.poster_path}
+            alt={item.title || item.name}
+            loading="lazy"
+            className="rounded-t-xl"
+          />
+        ) : (
+          <div className="w-full h-full bg-zinc-800 flex items-center justify-center rounded-t-xl text-zinc-500 text-xs">
+            No Image
+          </div>
+        )}
 
         <div className="carousel-card-body">
           <div className="carousel-card-title">
@@ -80,7 +86,7 @@ export default function MediaGridCard({
 
   // Year & Logic
   let displayYear = item.year || item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || "";
-  if (item.media_type === "tv" || (item.id && String(item.id).includes("_tv"))) {
+  if (item.media_type === "tv" || (item.id && String(item.id).startsWith("tv_"))) {
     const start = item.first_air_date?.slice(0, 4);
     const end = item.in_production ? "Present" : (item.last_air_date?.slice(0, 4) || "");
     if (start) {
@@ -111,7 +117,7 @@ export default function MediaGridCard({
           </span>
         </div>
         <img
-          src={item.poster_path ? IMG_BASE + item.poster_path : ""}
+          src={item.poster_path ? IMG_BASE + item.poster_path : null}
           alt={item.title || item.name}
           className="w-full aspect-2/3 object-cover"
         />

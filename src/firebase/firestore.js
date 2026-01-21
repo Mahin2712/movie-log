@@ -17,7 +17,7 @@ export async function ensureUserDocument(authUser) {
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-        await setDoc(userRef, {
+        const newData = {
             profile: {
                 name: authUser.name || "",
                 email: authUser.email || "",
@@ -29,11 +29,14 @@ export async function ensureUserDocument(authUser) {
                 lastLogin: serverTimestamp(),
                 version: 1,
             },
-        });
+        };
+        await setDoc(userRef, newData);
+        return newData;
     } else {
         await updateDoc(userRef, {
             "meta.lastLogin": serverTimestamp(),
         });
+        return snap.data();
     }
 }
 

@@ -4,7 +4,6 @@ import { IMG_BASE, TMDB_BASE } from "../utils/constants";
 export default function ShowDetailPage({
     show,
     onClose,
-    apiKey,
     onUpdateShow, // (updatedShow) => void
 }) {
     const [expandedSeasons, setExpandedSeasons] = useState(new Set());
@@ -17,25 +16,26 @@ export default function ShowDetailPage({
 
     // Initial fetch of show details (to get season list) if not present
     useEffect(() => {
-        if (!show.seasonList && apiKey) {
+        if (!show.seasonList) {
             // Fetch show details to get the list of seasons
-            fetch(`${TMDB_BASE}/tv/${show.tmdb_id}?api_key=${apiKey}`)
-                .then(r => r.json())
-                .then(data => {
-                    const seasonList = data.seasons || [];
-                    onUpdateShow({
-                        ...show,
-                        seasonList, // Metadata: season_number, episode_count, poster_path
-                        status: data.status,
-                        last_air_date: data.last_air_date,
-                        in_production: data.in_production,
-                        number_of_episodes: data.number_of_episodes,
-                        number_of_seasons: data.number_of_seasons
-                    });
-                })
-                .catch(err => console.error("Failed to fetch show details", err));
+            import("../services/tmdbClient").then(({ fetchFromTMDB }) => {
+                fetchFromTMDB(`/tv/${show.tmdb_id}`)
+                    .then(data => {
+                        const seasonList = data.seasons || [];
+                        onUpdateShow({
+                            ...show,
+                            seasonList, // Metadata: season_number, episode_count, poster_path
+                            production_status: data.status, // TMDB's production status (Ended, Returning Series, etc.)
+                            last_air_date: data.last_air_date,
+                            in_production: data.in_production,
+                            number_of_episodes: data.number_of_episodes,
+                            number_of_seasons: data.number_of_seasons
+                        });
+                    })
+                    .catch(err => console.error("Failed to fetch show details", err));
+            });
         }
-    }, [show.tmdb_id, apiKey, show.seasonList]);
+    }, [show.tmdb_id, show.seasonList, onUpdateShow, show]);
 
     const toggleSeason = async (seasonNum) => {
         const newExpanded = new Set(expandedSeasons);
@@ -52,12 +52,12 @@ export default function ShowDetailPage({
         // Check if we have episodes for this season
         const hasEpisodes = show.seasonsData && show.seasonsData[seasonNum] && show.seasonsData[seasonNum].episodes;
 
-        if (!hasEpisodes && apiKey) {
+        if (!hasEpisodes) {
             // Lazy load
             setLoadingSeasons(prev => new Set(prev).add(seasonNum));
             try {
-                const res = await fetch(`${TMDB_BASE}/tv/${show.tmdb_id}/season/${seasonNum}?api_key=${apiKey}`);
-                const data = await res.json();
+                const { fetchFromTMDB } = await import("../services/tmdbClient");
+                const data = await fetchFromTMDB(`/tv/${show.tmdb_id}/season/${seasonNum}`);
 
                 // Update show state with new season data
                 const currentSeasonsData = show.seasonsData || {};
@@ -102,9 +102,9 @@ export default function ShowDetailPage({
         const totalEpisodes = show.number_of_episodes || 1; // avoid div by 0
         const percent = Math.min(100, Math.round((watchedCount / totalEpisodes) * 100));
 
-        let status = "In Progress";
-        if (watchedCount === 0) status = "Not Started";
-        if (watchedCount >= totalEpisodes) status = "Completed";
+        // Use lowercase status values that match the watched list filter
+        let status = "watching"; // Default: watching
+        if (watchedCount >= totalEpisodes) status = "completed"; // Fully watched
 
         onUpdateShow({
             ...show,
@@ -130,9 +130,9 @@ export default function ShowDetailPage({
         const totalEpisodes = show.number_of_episodes || 1;
         const percent = Math.min(100, Math.round((watchedCount / totalEpisodes) * 100));
 
-        let status = "In Progress";
-        if (watchedCount === 0) status = "Not Started";
-        if (watchedCount >= totalEpisodes) status = "Completed";
+        // Use lowercase status values that match the watched list filter
+        let status = "watching"; // Default: watching
+        if (watchedCount >= totalEpisodes) status = "completed"; // Fully watched
 
         onUpdateShow({
             ...show,
@@ -190,8 +190,8 @@ export default function ShowDetailPage({
                             <span>•</span>
                             <span>{show.number_of_seasons || "?"} Seasons</span>
                             <span>•</span>
-                            <span className={show.status === "Ended" ? "text-red-400" : "text-emerald-400"}>
-                                {show.status || "Unknown"}
+                            <span className={(show.production_status || show.status) === "Ended" ? "text-red-400" : "text-emerald-400"}>
+                                {show.production_status || show.status || "Unknown"}
                             </span>
                         </div>
 

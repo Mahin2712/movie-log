@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/firebase";
 import { ensureUserDocument } from "../firebase/firestore";
+import { libraryService } from "../sync/libraryService";
 
 // 1. Initialize Context with default values
 const AuthContext = createContext({
@@ -28,10 +29,15 @@ export function AuthProvider({ children }) {
                     // Update local state first for a responsive UI
                     setAuthUser(mappedUser);
 
-                    // Sync user data with Firestore
-                    await ensureUserDocument(mappedUser);
+                    // Sync user data with Firestore and get full profile (including meta)
+                    const userDoc = await ensureUserDocument(mappedUser);
+
+                    // Initialize Library Service
+                    libraryService.setUser(mappedUser, userDoc?.meta);
+
                 } else {
                     setAuthUser(null);
+                    libraryService.setUser(null, null);
                 }
             } catch (error) {
                 console.error("Error in Auth State Change:", error);
