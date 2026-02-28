@@ -26,25 +26,24 @@ export default function WatchedRow({
     };
 
     return (
-        <div className="movie-card card">
+        <div className="movie-card card group relative">
             <img
                 className="movie-poster"
                 src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : ""}
                 alt={item.title}
             />
 
-            <div style={{ flex: 1 }}>
-                {/* HEADER */}
-                <div className="flex-between">
-                    <div>
-                        <h3>{item.title}</h3>
-                        <div className="year">
-                            {item.release_date?.slice(0, 4) || "—"}
+            <div className="movie-info flex-1 min-w-0 flex flex-col justify-between">
+                <div className="flex justify-between items-start gap-4">
+                    <div className="min-w-0">
+                        <h3 className="truncate pr-2 font-bold text-(length:--fs-base)">{item.title}</h3>
+                        <div className="year text-(length:--fs-xs) text-zinc-400">
+                            {item.release_date ? item.release_date.slice(0, 4) : "—"}
                         </div>
                     </div>
 
                     {/* RATING DISPLAY */}
-                    <div className="rating-display" onClick={() => setOpen(!open)}>
+                    <div className="rating-display cursor-pointer shrink-0" onClick={() => setOpen(!open)}>
                         {displayRating > 0 ? (
                             <span
                                 style={{
@@ -54,11 +53,12 @@ export default function WatchedRow({
                                     fontWeight: 600,
                                     display: "inline-block"
                                 }}
+                                className="text-sm"
                             >
                                 ★ {displayRating.toFixed(1)}
                             </span>
                         ) : (
-                            <span className="star-icon muted">★</span>
+                            <span className="star-icon muted text-zinc-600">★</span>
                         )}
                     </div>
                 </div>
@@ -66,18 +66,18 @@ export default function WatchedRow({
                 {/* ⭐ STAR PANEL */}
                 {open && (
                     <div
-                        className="star-panel"
+                        className="star-panel absolute z-50 bg-zinc-900 border border-zinc-700 p-2 rounded-lg shadow-xl right-2 top-8 flex gap-1"
                         onMouseLeave={() => setHover(null)}
                     >
                         {Array.from({ length: 10 }).map((_, i) => (
-                            <div key={i} className="star-slot">
-                                <span className={`star-visual ${starClass(i)}`}>
+                            <div key={i} className="star-slot relative w-4 h-4 cursor-pointer">
+                                <span className={`star-visual text-zinc-600 text-lg leading-none absolute inset-0 flex items-center justify-center ${starClass(i)}`}>
                                     ★
                                 </span>
 
                                 {/* HALF STAR HITBOX (Left 50%) */}
                                 <div
-                                    className="star-hit left"
+                                    className="star-hit left absolute left-0 top-0 w-1/2 h-full z-10"
                                     onMouseEnter={() => setHover(i + 0.5)}
                                     onClick={() => {
                                         onSetRating(i + 0.5);
@@ -88,7 +88,7 @@ export default function WatchedRow({
 
                                 {/* FULL STAR HITBOX (Right 50%) */}
                                 <div
-                                    className="star-hit right"
+                                    className="star-hit right absolute right-0 top-0 w-1/2 h-full left-1/2 z-10"
                                     onMouseEnter={() => setHover(i + 1)}
                                     onClick={() => {
                                         onSetRating(i + 1);
@@ -101,28 +101,29 @@ export default function WatchedRow({
                     </div>
                 )}
 
-                {/* OVERVIEW */}
-                <p className="mt-8">{item.overview || "No description saved."}</p>
+                <p className="mt-2 text-(length:--fs-sm) text-zinc-400 line-clamp-2 md:line-clamp-3">
+                    {item.overview || "No details available."}
+                </p>
+            </div>
 
-                {/* ACTIONS */}
-                <div className="flex-gap-8 mt-8">
-                    <button className="btn" onClick={() => onRemove(item.id)}>
-                        Remove
-                    </button>
+            {/* ACTIONS */}
+            <div className="flex flex-wrap gap-2 mt-3">
+                <button className="btn text-xs py-1.5 px-3" onClick={() => onRemove(item.id)}>
+                    Remove
+                </button>
 
-                    <button className="btn" onClick={() => onMoveToWishlist(item.id)}>
-                        Move to Wishlist
-                    </button>
+                <button className="btn text-xs py-1.5 px-3" onClick={() => onMoveToWishlist(item.id)}>
+                    Move to Wishlist
+                </button>
 
-                    <a
-                        className="btn btn-ghost"
-                        href={`https://www.themoviedb.org/movie/${item.tmdb_id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                    >
-                        Open
-                    </a>
-                </div>
+                <a
+                    className="btn btn-ghost text-xs py-1.5 px-3"
+                    href={`https://www.themoviedb.org/movie/${item.tmdb_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    Open
+                </a>
             </div>
         </div>
     );

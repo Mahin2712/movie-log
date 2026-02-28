@@ -54,7 +54,7 @@ export default function MediaGridCard({
           <div className="carousel-actions">
             {/* ADD TO WATCHED */}
             <button
-              className={`btn ${isInWatchlist ? "btn-filled !bg-green-700 !border-green-600" : ""}`}
+              className={`btn ${isInWatchlist ? "btn-filled bg-green-700! border-green-600!" : ""}`}
               disabled={isInWatchlist}
               onClick={(e) => {
                 e.stopPropagation();
@@ -66,7 +66,7 @@ export default function MediaGridCard({
 
             {/* ADD TO WISHLIST */}
             <button
-              className={`btn ${isInWishlist ? "btn-filled !bg-red-700 !border-red-600" : ""} ${isInWatchlist ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`btn ${isInWishlist ? "btn-filled bg-red-700! border-red-600!" : ""} ${isInWatchlist ? "opacity-50 cursor-not-allowed" : ""}`}
               disabled={isInWishlist || isInWatchlist} // Cannot wishlist if watched
               onClick={(e) => {
                 e.stopPropagation();
@@ -183,30 +183,28 @@ export default function MediaGridCard({
       </div>
 
       {/* Title */}
-      <div className="mt-2">
-        <div className="text-sm font-semibold leading-tight line-clamp-2">
-          {item.title || item.name}
-        </div>
+      <div className="mt-2 text-(length:--fs-base) font-bold leading-tight line-clamp-2 text-zinc-100 group-hover:text-blue-400 transition-colors">
+        {item.title || item.name}
+      </div>
 
-        {/* Metadata row */}
-        <div className="mt-1 flex items-center justify-between text-xs w-full">
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-400">
-              {displayYear}
-            </span>
-            {seasonLabel && (
-              <span className="text-purple-400 text-[10px] uppercase font-bold tracking-wide">{seasonLabel}</span>
-            )}
-          </div>
-
-          {(mode === "watchlist" || mode === "wishlist") && daysAgo !== null && (
-            daysAgo < 1 ? (
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold" style={{ marginLeft: "auto" }}>New</span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full bg-zinc-700/50 text-zinc-200" style={{ marginLeft: "auto" }}>{daysAgo}d ago</span>
-            )
+      {/* Metadata row */}
+      <div className="mt-1 flex items-center justify-between text-(length:--fs-xs) w-full text-zinc-400">
+        <div className="flex items-center gap-2">
+          <span>
+            {displayYear}
+          </span>
+          {seasonLabel && (
+            <span className="text-purple-400 font-bold tracking-wide">{seasonLabel}</span>
           )}
         </div>
+
+        {(mode === "watchlist" || mode === "wishlist") && daysAgo !== null && (
+          daysAgo < 1 ? (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold ml-auto text-[10px]">New</span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full bg-zinc-700/50 text-zinc-300 ml-auto">{daysAgo}d ago</span>
+          )
+        )}
       </div>
     </div >
   );

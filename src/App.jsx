@@ -569,19 +569,25 @@ export default function App() {
     return getWatchStats(watched);
   }, [watched]);
 
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100">
+    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden">
       {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
+          setMobileMenuOpen(false); // Close on selection
           exitSearchMode();
         }}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
 
       {/* Main area */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden relative w-full">
         {/* Loading Overlay */}
         {(authLoading || libraryLoading) && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
@@ -601,6 +607,7 @@ export default function App() {
           onOpenSettings={() => setShowSettings(true)}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
         {/* Search Results Page (grid only) */}

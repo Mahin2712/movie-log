@@ -14,7 +14,7 @@ export default function SearchResultsGrid({
 
     if (viewMode === "list") {
         return (
-            <div className="flex flex-col gap-4 w-full">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,350px),1fr))] gap-4 w-full">
                 {results.map((item) => {
                     const inWatchlist = isInWatchlist(item);
                     const inWishlist = isInWishlist(item);
@@ -32,7 +32,7 @@ export default function SearchResultsGrid({
                             />
 
                             <div className="flex-1 flex flex-col justify-center gap-1">
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-wrap items-start sm:items-center justify-between gap-3">
                                     <div>
                                         <h3 className="text-lg font-bold text-white">{item.title}</h3>
                                         <div className="text-sm text-zinc-400">
@@ -41,7 +41,7 @@ export default function SearchResultsGrid({
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-wrap gap-2">
                                         <button
                                             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${inWatchlist
                                                 ? "bg-green-900/30 text-green-400 border border-green-800 cursor-default"
@@ -59,10 +59,10 @@ export default function SearchResultsGrid({
 
                                         <button
                                             className={`w-9 h-9 flex items-center justify-center rounded-lg border transition ${inWatchlist
-                                                    ? "opacity-30 cursor-not-allowed bg-zinc-800 border-zinc-700 text-zinc-600"
-                                                    : inWishlist
-                                                        ? "bg-red-900/20 border-red-800 text-red-500"
-                                                        : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                                                ? "opacity-30 cursor-not-allowed bg-zinc-800 border-zinc-700 text-zinc-600"
+                                                : inWishlist
+                                                    ? "bg-red-900/20 border-red-800 text-red-500"
+                                                    : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"
                                                 }`}
                                             disabled={inWatchlist}
                                             onClick={() => !inWatchlist && onAddWishlist(item)}
@@ -94,7 +94,7 @@ export default function SearchResultsGrid({
     }
 
     return (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(clamp(140px,15vw,240px),1fr))] gap-4 sm:gap-6">
             {results.map((item) => (
                 <SearchResultCard
                     key={`${item.media_type}-${item.tmdb_id}`}
