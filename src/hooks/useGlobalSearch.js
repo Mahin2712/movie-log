@@ -6,17 +6,19 @@ const BASE_URL = "https://api.themoviedb.org/3";
 export function useGlobalSearch() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [mediaType, setMediaType] = useState("all"); // all, movie, tv
+
+  const isSearching = search.trim().length > 0;
 
   const fetchSearchResults = useCallback(async (query, type) => {
     if (!query.trim()) {
       setSearchResults([]);
-      setIsSearching(false);
+      setLoading(false);
       return;
     }
 
-    setIsSearching(true);
+    setLoading(true);
     try {
       const endpoint = type === "all" ? "/search/multi" : `/search/${type}`;
       const url = `${BASE_URL}${endpoint}?api_key=${API_KEY}&query=${encodeURIComponent(query)}&include_adult=false`;
@@ -34,14 +36,18 @@ export function useGlobalSearch() {
       console.error("Search failed:", error);
       setSearchResults([]);
     } finally {
-      setIsSearching(false);
+      setLoading(false);
     }
   }, []);
 
   // Debounced search effect
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchSearchResults(search, mediaType);
+      if (search.trim()) {
+        fetchSearchResults(search, mediaType);
+      } else {
+        setSearchResults([]);
+      }
     }, 400);
 
     return () => clearTimeout(timer);
@@ -57,8 +63,10 @@ export function useGlobalSearch() {
     setSearch,
     searchResults,
     isSearching,
+    loading,
     mediaType,
     setMediaType,
     clearSearch
   };
 }
+
