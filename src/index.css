@@ -15,36 +15,39 @@
 
   /* Fluid Typography (Mobile Base -> desktop Up) */
   /* min (mobile), preferred (scaling), max (desktop+) */
-  --fs-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-  /* 12px -> 14px */
-  --fs-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
-  /* 14px -> 16px */
-  --fs-base: clamp(1rem, 0.95rem + 0.5vw, 1.125rem);
-  /* 16px -> 18px */
-  --fs-lg: clamp(1.125rem, 1rem + 1vw, 1.5rem);
-  /* 18px -> 24px */
-  --fs-xl: clamp(1.5rem, 1.3rem + 1.5vw, 2rem);
-  /* 24px -> 32px */
-  --fs-2xl: clamp(2rem, 1.8rem + 2vw, 3rem);
-  /* 32px -> 48px */
+  --fs-xs: clamp(0.7rem, 0.65rem + 0.2vw, 0.875rem);
+  /* 11px -> 14px */
+  --fs-sm: clamp(0.8rem, 0.75rem + 0.3vw, 1rem);
+  /* 13px -> 16px */
+  --fs-base: clamp(0.9rem, 0.85rem + 0.4vw, 1.125rem);
+  /* 14px -> 18px */
+  --fs-lg: clamp(1rem, 0.95rem + 0.8vw, 1.5rem);
+  /* 16px -> 24px */
+  --fs-xl: clamp(1.25rem, 1.1rem + 1.2vw, 2rem);
+  /* 20px -> 32px */
+  --fs-2xl: clamp(1.75rem, 1.5rem + 1.5vw, 3rem);
+  /* 28px -> 48px */
 
   /* Fluid Spacing */
-  --space-xs: clamp(0.25rem, 0.2rem + 0.25vw, 0.5rem);
-  /* 4px -> 8px */
-  --space-sm: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem);
-  /* 8px -> 12px */
-  --space-md: clamp(1rem, 0.9rem + 0.5vw, 1.5rem);
-  /* 16px -> 24px */
-  --space-lg: clamp(1.5rem, 1.4rem + 1vw, 2.5rem);
-  /* 24px -> 40px */
-  --space-xl: clamp(2.5rem, 2.3rem + 1.5vw, 4rem);
-  /* 40px -> 64px */
+  --space-xs: clamp(0.25rem, 0.2rem + 0.25vw, 0.5rem);   /* 4px -> 8px */
+  --space-sm: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem);    /* 8px -> 12px */
+  --space-md: clamp(1rem, 0.9rem + 0.5vw, 1.5rem);       /* 16px -> 24px */
+  --space-lg: clamp(1.5rem, 1.4rem + 1vw, 2.5rem);       /* 24px -> 40px */
+  --space-xl: clamp(2.5rem, 2.3rem + 1.5vw, 4rem);       /* 40px -> 64px */
 
-  /* Layout */
+  /* Viewport & Layout */
+  --vh: 1dvh;
   --container-width: min(100% - var(--space-md) * 2, 1400px);
   --header-height: clamp(60px, 50px + 2vw, 80px);
   --sidebar-width: clamp(240px, 20vw, 300px);
 }
+
+/* Reset height to dynamic viewport height for mobile stability */
+.h-screen {
+  height: 100vh;
+  height: 100dvh;
+}
+
 
 /* ================================
    1. HIDE SCROLLBARS (but allow scrolling)
@@ -1098,9 +1101,7 @@ select:-moz-focusring {
 
 .carousel-card {
   flex: 0 0 auto;
-  width: 160px;
-  /* stable base width */
-  height: auto;
+  width: 100%;
   /* stable base height */
   border-radius: 12px;
   background: var(--card-bg, linear-gradient(180deg, #0e1830, #081026));
@@ -1117,12 +1118,12 @@ select:-moz-focusring {
 /* Poster: fixed area on top */
 .carousel-card img {
   width: 100%;
-  height: 240px;
+  aspect-ratio: 2 / 3;
+  height: auto;
   /* poster visible area */
   object-fit: cover;
   display: block;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  border-radius: 12px;
 }
 
 /* reveal area anchored to bottom and overlays */
@@ -1230,16 +1231,32 @@ select:-moz-focusring {
 /* responsive tweak: narrower screens */
 @media (max-width: 900px) {
   .carousel-card {
-    width: 140px;
-    height: 260px;
-  }
-
-  .carousel-card img {
-    height: 180px;
+    width: 100%;
+    /* allow it to scale dynamically with grid cols */
+    background: transparent;
+    border: none;
   }
 
   .carousel-card:hover {
-    transform: scale(1.08);
+    transform: scale(1.04);
+  }
+  
+  /* On mobile, show the titles statically under the poster! */
+  .carousel-card-body {
+    position: relative;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    background: transparent;
+    padding: 8px 4px;
+  }
+  
+  .carousel-card-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 }
 
@@ -1256,6 +1273,18 @@ select:-moz-focusring {
 
 .carousel-arrow.right {
   right: -18px;
+}
+
+.carousel .carousel-card {
+  width: 160px;
+  max-width: 160px;
+}
+
+@media (max-width: 900px) {
+  .carousel .carousel-card {
+    width: 140px;
+    max-width: 140px;
+  }
 }
 
 .carousel:hover .carousel-card:not(:hover) {

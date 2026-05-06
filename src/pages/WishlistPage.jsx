@@ -12,6 +12,7 @@ export default function WishlistPage({
   genresMap,
   onRemove,
   onMoveToWatched,
+  onSelect,
 }) {
   // Media type filter
   const [mediaFilter, setMediaFilter] = useState("all");
@@ -124,20 +125,20 @@ export default function WishlistPage({
 
       {/* 📌 Wishlist items: grid or list */}
       {viewMode === "grid" ? (
-        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-6">
           {pagedWishlist.map((item) => {
             const daysAgo = item.dateAdded
               ? Math.floor((Date.now() - new Date(item.dateAdded)) / 86400000)
               : null;
 
             return (
-              <MediaGridCard
+               <MediaGridCard
                 key={item.id}
                 item={item}
                 daysAgo={daysAgo}
                 mode="wishlist"
                 onMarkWatched={onMoveToWatched}
-                onClick={() => setSelectedItem(item)}
+                onOpenDetail={() => onSelect?.(item)}
               />
             );
           })}

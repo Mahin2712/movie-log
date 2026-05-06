@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import MediaGridCard from "./components/MediaGridCard";
 import PageWrapper from "./components/PageWrapper";
+import { useGlobalSearch } from "./hooks/useGlobalSearch";
 
 /* ------------------------ MovieRow ------------------------ */
 import MovieRow from "./components/MovieRow.jsx";
@@ -93,65 +94,23 @@ export default function App() {
     };
   }, []);
 
-  // --- Global Search State ---
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchFilter, setSearchFilter] = useState("all"); // all | movie | tv
-
-  // Search effect with debounce
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setIsSearching(false);
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    const controller = new AbortController();
-
-    const timeout = setTimeout(async () => {
-      try {
-        const { fetchFromTMDB } = await import("./services/tmdbClient");
-        const data = await fetchFromTMDB("/search/multi", { query: searchQuery }, { signal: controller.signal });
-
-        const normalized = (data.results || [])
-          .filter((item) => item.media_type !== "person")
-          .map(normalizeMedia);
-
-        setSearchResults(normalized);
-      } catch (e) {
-        if (e.name !== "AbortError") {
-          console.error(e);
-          setSearchResults([]);
-        }
-      }
-    }, 400);
-
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [searchQuery, normalizeMedia]);
-
-  // Exit search function
-  const exitSearchMode = () => {
-    setSearchQuery("");
-    setSearchResults([]);
-    setIsSearching(false);
-  };
+  // --- Global Search ---
+  const {
+    search: searchQuery,
+    setSearch: setSearchQuery,
+    searchResults,
+    isSearching,
+    mediaType: searchFilter,
+    setMediaType: setSearchFilter,
+    clearSearch: exitSearchMode
+  } = useGlobalSearch();
   // Media Store
   const { media, addMedia, updateStatus, rateMedia, removeMedia, importMedia } =
     useMediaStore();
 
   // Discovery / main content
   const [popular, setPopular] = useState([]);
-  const [discoverResults, setDiscoverResults] = useState([]);
-  const [mainSearch, setMainSearch] = useState("");
   const [loadingDiscover, setLoadingDiscover] = useState(false);
-
-  const [headerSearch, setHeaderSearch] = useState("");
-  const [mediaType, setMediaType] = useState("all"); // all | movie | tv
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem("movieApp_viewMode") || "list";
   }); // list | grid
@@ -674,6 +633,11 @@ export default function App() {
               }
               onAddWatchlist={addToWatchlist}
               onAddWishlist={addToWishlist}
+              onOpenDetail={(item) => {
+                if (item.media_type === 'tv' || item.id.endsWith('_tv')) {
+                  setSelectedMedia(item);
+                }
+              }}
             />
           </main>
         )}
@@ -692,6 +656,11 @@ export default function App() {
                   isWishlisted={isWishlisted}
                   onAddWatched={addToWatchlist}
                   onToggleWishlist={addToWishlist}
+                  onOpenDetail={(item) => {
+                    if (item.media_type === 'tv' || item.id.endsWith('_tv')) {
+                      setSelectedMedia(item);
+                    }
+                  }}
                 />
               </PageWrapper>
             )}
@@ -723,6 +692,11 @@ export default function App() {
                   genresMap={genresMap}
                   onRemove={removeFromWishlist}
                   onMoveToWatched={addToWatchlist}
+                  onSelect={(item) => {
+                    if (item.media_type === 'tv' || item.id.endsWith('_tv')) {
+                      setSelectedMedia(item);
+                    }
+                  }}
                 />
               </PageWrapper>
             )}

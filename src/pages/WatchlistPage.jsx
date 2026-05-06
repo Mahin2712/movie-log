@@ -130,7 +130,7 @@ export default function WatchlistPage({
       )}
 
       {viewMode === "grid" ? (
-        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-6">
           {paginatedWatched.map((item) => {
             const daysAgo = item.dateAdded
               ? Math.floor((Date.now() - new Date(item.dateAdded)) / 86400000)

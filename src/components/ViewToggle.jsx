@@ -34,11 +34,11 @@ export default function ViewToggle({ viewMode, setViewMode }) {
                 </svg>
             </button>
 
-            {/* Grid Button - Pill Shape with Text */}
+            {/* Grid Button - Pill Shape with Text (Now identical icon-only button) */}
             <button
                 onClick={() => setViewMode("grid")}
                 className={`
-          flex items-center gap-2 px-4 h-10 rounded-md transition-all duration-200 font-medium text-sm
+          w-10 h-10 flex items-center justify-center rounded-md transition-all duration-200
           ${viewMode === "grid"
                         ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
                         : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
@@ -58,7 +58,6 @@ export default function ViewToggle({ viewMode, setViewMode }) {
                     <rect x="3" y="14" width="7" height="7" rx="2" />
                     <rect x="14" y="14" width="7" height="7" rx="2" />
                 </svg>
-                Grid
             </button>
         </div>
     );

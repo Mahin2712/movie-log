@@ -1,5 +1,6 @@
 
 import { IMG_BASE } from "../utils/constants";
+import { getTMDBLink } from "../utils/tmdb";
 
 // src/components/MovieRow.jsx
 export default function MovieRow({
@@ -44,7 +45,7 @@ export default function MovieRow({
                             {isWishlisted ? "❤️" : "🤍"}
                         </button>
 
-                        <a className="btn btn-ghost" href={`https://www.themoviedb.org/movie/${movie.id}`} target="_blank" rel="noreferrer">Open</a>
+                        <a className="btn btn-ghost" href={getTMDBLink(movie)} target="_blank" rel="noreferrer">Open</a>
                     </div>
                 </div>
 

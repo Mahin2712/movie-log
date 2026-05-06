@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IMG_BASE } from "../utils/constants";
+import { getTMDBLink } from "../utils/tmdb";
 
 export default function WatchedRow({
     item,
@@ -118,7 +119,7 @@ export default function WatchedRow({
 
                 <a
                     className="btn btn-ghost text-xs py-1.5 px-3"
-                    href={`https://www.themoviedb.org/movie/${item.tmdb_id}`}
+                    href={getTMDBLink(item)}
                     target="_blank"
                     rel="noreferrer"
                 >

@@ -7,15 +7,17 @@ export default function SearchResultCard({
     inWishlist,
     onAddWatchlist,
     onAddWishlist,
+    onOpenDetail,
 }) {
     const fallback = "https://via.placeholder.com/300x450?text=No+Poster";
 
     return (
-        <div className="carousel-card w-full h-auto min-h-[240px]">
+        <div className="carousel-card w-full h-auto cursor-pointer" onClick={() => onOpenDetail?.(item)}>
             <img
                 src={item.poster_path ? IMG_BASE + item.poster_path : fallback}
                 alt={item.title}
                 loading="lazy"
+                className="rounded-t-xl w-full aspect-[2/3] object-cover"
             />
 
             <div className="carousel-card-body">

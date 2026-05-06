@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { IMG_BASE } from "../utils/constants";
+import { getTMDBLink } from "../utils/tmdb";
 
 export default function WatchedRow({
     item,
@@ -56,26 +57,26 @@ export default function WatchedRow({
     const showDesc = expanded ? description : description.slice(0, DESC_LIMIT) + (isLongDesc ? "..." : "");
 
     return (
-        <div className="movie-card wishlist-row group relative">
+        <div className="movie-card wishlist-row group relative flex flex-row">
             {/* Poster container */}
             <div className="relative shrink-0">
                 <img
-                    className="w-28 h-full rounded-lg object-cover shadow-lg"
+                    className="w-20 sm:w-28 h-auto aspect-[2/3] sm:h-full rounded-lg object-cover shadow-lg"
                     src={item.poster_path ? `${IMG_BASE}${item.poster_path}` : null}
                     alt={item.title}
                 />
             </div>
 
-            <div className="movie-info relative flex-1 flex flex-col min-h-40">
+            <div className="movie-info relative flex-1 flex flex-col justify-between min-h-[min-content] sm:min-h-40 ml-2 sm:ml-0">
                 {/* Header: Tag only */}
-                <div className="mb-1">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${item.media_type === "movie" || !item.media_type ? "bg-blue-600" : "bg-purple-600"} text-white`}>
+                <div className="mb-0.5 sm:mb-1">
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-bold ${item.media_type === "movie" || !item.media_type ? "bg-blue-600" : "bg-purple-600"} text-white`}>
                         {item.media_type === "movie" || !item.media_type ? "Movie" : "TV"}
                     </span>
                 </div>
 
-                {/* RATING DISPLAY: Absolute Top Right for 'Higher' placement */}
-                <div className="absolute top-0 right-0 rating-display cursor-pointer hover:scale-105 transition-transform" onClick={() => setOpen(!open)}>
+                {/* RATING DISPLAY: Absolute Top Right */}
+                <div className="absolute -top-1 sm:top-0 right-0 rating-display cursor-pointer hover:scale-105 transition-transform" onClick={() => setOpen(!open)}>
                     {displayRating > 0 ? (
                         <span
                             style={{
@@ -83,30 +84,30 @@ export default function WatchedRow({
                                 WebkitBackgroundClip: "text",
                                 WebkitTextFillColor: "transparent",
                                 fontWeight: 700,
-                                fontSize: "1.4rem",
                                 display: "inline-block",
                                 filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
                             }}
+                            className="text-lg sm:text-[1.4rem]"
                         >
                             ★ {displayRating.toFixed(1)}
                         </span>
                     ) : (
-                        <span className="star-icon muted text-zinc-600 hover:text-blue-400 text-2xl">★</span>
+                        <span className="star-icon muted text-zinc-600 hover:text-blue-400 text-xl sm:text-2xl">★</span>
                     )}
                 </div>
 
                 {/* Title & Year */}
-                <div className="pr-20">
-                    <div className="flex items-center gap-3">
-                        <h3 className="text-xl font-semibold leading-tight text-white">{item.title}</h3>
+                <div className="pr-12 sm:pr-20">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <h3 className="text-base sm:text-lg font-semibold leading-tight text-white mb-0.5 line-clamp-2">{item.title}</h3>
 
                         {/* Progress Ring (Inline) */}
                         {(item.media_type === 'tv' || String(item.id).startsWith('tv_')) && (
-                            <div className="relative w-8 h-8 shrink-0">
+                            <div className="relative w-6 h-6 sm:w-8 sm:h-8 shrink-0 hidden sm:block">
                                 <svg className="w-full h-full transform -rotate-90">
                                     <circle
-                                        cx="16"
-                                        cy="16"
+                                        cx="50%"
+                                        cy="50%"
                                         r={progressRadius}
                                         stroke="currentColor"
                                         strokeWidth="3"
@@ -114,8 +115,8 @@ export default function WatchedRow({
                                         className="text-zinc-800"
                                     />
                                     <circle
-                                        cx="16"
-                                        cy="16"
+                                        cx="50%"
+                                        cy="50%"
                                         r={progressRadius}
                                         stroke="currentColor"
                                         strokeWidth="3"
@@ -126,22 +127,19 @@ export default function WatchedRow({
                                         className={progressPercent === 100 ? "text-emerald-500" : "text-blue-500"}
                                     />
                                 </svg>
-                                <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-zinc-300">
-                                    {progressPercent > 0 ? `${progressPercent}%` : "0%"}
-                                </div>
                             </div>
                         )}
                     </div>
-                    <div className="flex items-center text-sm text-zinc-400 mt-1 gap-3">
+                    <div className="flex flex-wrap items-center text-xs sm:text-sm text-zinc-400 gap-2 sm:gap-3">
                         <span>{displayYear}</span>
                         {seasonLabel && (
                             <span className="text-zinc-500">{seasonLabel}</span>
                         )}
                         {daysAgo !== null && (
                             daysAgo < 1 ? (
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs shadow-sm">New</span>
+                                <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[9px] sm:text-xs shadow-sm">New</span>
                             ) : (
-                                <span className="px-2 py-0.5 rounded-full bg-zinc-800 border border-white/5 text-zinc-400 text-xs font-medium">{daysAgo}d ago</span>
+                                <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-zinc-800 border border-white/5 text-zinc-400 text-[9px] sm:text-xs font-medium">{daysAgo}d ago</span>
                             )
                         )}
                     </div>
@@ -162,13 +160,13 @@ export default function WatchedRow({
                         />
 
                         <div
-                            className="star-panel absolute right-0 top-8 z-50 bg-zinc-900 border border-white/10 shadow-2xl rounded-full px-3 py-1.5 flex items-center gap-1"
+                            className="star-panel absolute right-0 top-8 z-50 bg-zinc-900 border border-white/10 shadow-2xl rounded-full px-2 sm:px-3 py-1.5 flex items-center gap-0.5 sm:gap-1 scale-90 sm:scale-100 origin-top-right"
                             onMouseLeave={() => setHover(null)}
                         >
                             {Array.from({ length: 10 }).map((_, i) => (
                                 <div key={i} className="star-slot relative cursor-pointer flex items-center justify-center">
                                     <span
-                                        className={`text-lg leading-none transition-colors ${starClass(i) === "full" ? "text-blue-400" : starClass(i) === "half" ? "text-blue-400/50" : "text-zinc-700 hover:text-zinc-500"
+                                        className={`text-base sm:text-lg leading-none transition-colors ${starClass(i) === "full" ? "text-blue-400" : starClass(i) === "half" ? "text-blue-400/50" : "text-zinc-700 hover:text-zinc-500"
                                             }`}
                                     >
                                         ★
@@ -202,42 +200,42 @@ export default function WatchedRow({
                 )}
 
                 {/* Description with 'Show More' */}
-                <div className="mt-2 text-sm text-zinc-400 leading-relaxed">
+                <div className="mt-1.5 sm:mt-2 text-[11px] sm:text-sm text-zinc-400 leading-relaxed hidden sm:block">
                     <p className="inline">
                         {showDesc}
                     </p>
                     {isLongDesc && (
                         <button
                             onClick={() => setExpanded(!expanded)}
-                            className="ml-2 text-blue-400 hover:text-blue-300 text-xs font-semibold hover:underline"
+                            className="ml-1 sm:ml-2 text-blue-400 hover:text-blue-300 text-[10px] sm:text-xs font-semibold hover:underline"
                         >
                             {expanded ? "Show less" : "Show more"}
                         </button>
                     )}
                 </div>
 
-                <div className="flex gap-2 mt-auto pt-4">
-                    <button className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors" onClick={() => onRemove(item.id)}>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-auto pt-2 sm:pt-4">
+                    <button className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors" onClick={() => onRemove(item.id)}>
                         Remove
                     </button>
 
-                    <button className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors" onClick={() => onMoveToWishlist(item.id)}>
+                    <button className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors" onClick={() => onMoveToWishlist(item.id)}>
                         Wishlist
                     </button>
 
 
                     {(item.media_type === 'tv' || String(item.id).startsWith('tv_')) && (
                         <button
-                            className="btn btn-sm px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
+                            className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
                             onClick={() => onSelect?.(item)}
                         >
-                            Manage Progress
+                            Manage
                         </button>
                     )}
 
                     <a
-                        className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors"
-                        href={`https://www.themoviedb.org/movie/${item.tmdb_id}`}
+                        className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors text-center"
+                        href={getTMDBLink(item)}
                         target="_blank"
                         rel="noreferrer"
                     >

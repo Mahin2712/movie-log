@@ -16,7 +16,7 @@ export default function AllPage({
       <h2 className="carousel-title">Popular / Now Playing</h2>
 
       {viewMode === "grid" ? (
-        <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(160px,1fr))]">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-6">
           {popular.map((movie) => (
             <MediaGridCard
               key={movie.id}
@@ -27,6 +27,7 @@ export default function AllPage({
               isInWishlist={isWishlisted(movie.id)}
               onAddToWatchlist={onAddWatched}
               onAddToWishlist={onToggleWishlist}
+              onOpenDetail={onOpenDetail}
             />
           ))}
         </div>
@@ -46,9 +47,11 @@ export default function AllPage({
 
               return (
                 <div key={movie.id} className="carousel-card">
-                  <img
+                   <img
                     src={movie.poster_path ? IMG_BASE + movie.poster_path : ""}
                     alt={movie.title}
+                    onClick={() => onOpenDetail?.(movie)}
+                    className="cursor-pointer"
                   />
 
                   <div className="carousel-card-body">

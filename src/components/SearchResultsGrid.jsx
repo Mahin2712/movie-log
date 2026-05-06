@@ -1,6 +1,7 @@
 import React from "react";
 import SearchResultCard from "./SearchResultCard";
 import { IMG_BASE } from "../utils/constants";
+import { getTMDBLink } from "../utils/tmdb";
 
 export default function SearchResultsGrid({
     results,
@@ -8,6 +9,7 @@ export default function SearchResultsGrid({
     isInWishlist,
     onAddWatchlist,
     onAddWishlist,
+    onOpenDetail,
     viewMode = "grid"
 }) {
     const fallback = "https://via.placeholder.com/300x450?text=No+Poster";
@@ -72,7 +74,7 @@ export default function SearchResultsGrid({
                                         </button>
 
                                         <a
-                                            href={`https://www.themoviedb.org/${item.media_type || "movie"}/${item.tmdb_id}`}
+                                            href={getTMDBLink(item)}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="px-4 py-1.5 rounded-lg text-sm font-medium bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 border border-zinc-700 transition"
@@ -94,7 +96,7 @@ export default function SearchResultsGrid({
     }
 
     return (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(clamp(140px,15vw,240px),1fr))] gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(clamp(140px,15vw,240px),1fr))] gap-4 sm:gap-6">
             {results.map((item) => (
                 <SearchResultCard
                     key={`${item.media_type}-${item.tmdb_id}`}
@@ -103,6 +105,7 @@ export default function SearchResultsGrid({
                     inWishlist={isInWishlist(item)}
                     onAddWatchlist={onAddWatchlist}
                     onAddWishlist={onAddWishlist}
+                    onOpenDetail={onOpenDetail}
                 />
             ))}
         </div>
