@@ -102,7 +102,15 @@ export default function WatchlistPage({
        RENDER
     ---------------------------------------- */
   return (
-    <div className="container-max watchlist-page">
+    <div className="flex flex-col gap-8 pb-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
+      {/* HEADER */}
+      <header className="flex flex-col gap-2">
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase text-white leading-[0.8] mb-1">
+          Watchlist <span className="text-blue-500">.</span>
+        </h1>
+        <p className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Your curated collection of cinema.</p>
+      </header>
+
       {/* FILTER BAR */}
       <FilterBar
         mediaFilter={mediaFilter}
@@ -125,11 +133,24 @@ export default function WatchlistPage({
       />
 
       {/* MOVIES: grid or list view */}
-      {paginatedWatched.length === 0 && (
-        <div className="empty-state">No movies found</div>
-      )}
-
-      {viewMode === "grid" ? (
+      {paginatedWatched.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-6 text-center animate-in zoom-in duration-500">
+            <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-900/50 flex items-center justify-center text-4xl border border-white/5 backdrop-blur-xl">
+                🎬
+            </div>
+            <div className="flex flex-col gap-2 max-w-xs">
+                <h3 className="text-xl font-black text-white tracking-tight uppercase">Your list is empty</h3>
+                <p className="text-sm text-zinc-500 font-medium leading-relaxed">Start exploring and save movies or shows for later.</p>
+            </div>
+            <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'all' }))}
+                className="px-8 py-3.5 rounded-2xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest transition-all hover:scale-105 hover:bg-blue-500 active:scale-95 shadow-xl shadow-blue-900/20"
+            >
+                Discover Movies
+            </button>
+        </div>
+      ) : (
+        viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-6">
           {paginatedWatched.map((item) => {
             const daysAgo = item.dateAdded
@@ -141,7 +162,7 @@ export default function WatchlistPage({
                 item={item}
                 daysAgo={daysAgo}
                 mode="watchlist"
-                onSelect={() => onSelect?.(item)}
+                onOpenDetail={() => onSelect?.(item)}
               />
             );
           })}
@@ -161,7 +182,7 @@ export default function WatchlistPage({
             />
           ))}
         </>
-      )}
+      ))}
 
       {/* PAGINATION */}
       {totalPages > 1 && (

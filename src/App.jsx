@@ -6,6 +6,7 @@ import { useLibraryActions } from "./hooks/useLibraryActions";
 import { useGlobalSearch } from "./hooks/useGlobalSearch";
 import { useDiscovery } from "./hooks/useDiscovery";
 import { useGenres } from "./hooks/useGenres";
+import { useMinimumLoading } from "./hooks/useMinimumLoading";
 
 // Layout & Components
 import AppShell from "./layouts/AppShell";
@@ -34,8 +35,12 @@ function AppContent() {
         loading: searchLoading, mediaType: searchFilter, 
         setMediaType: setSearchFilter, clearSearch 
     } = useGlobalSearch();
-    const { popular, recommended } = useDiscovery();
+    const { popular, recommended, loading: discoveryLoading } = useDiscovery();
     const { genresMap } = useGenres();
+
+    // Premium Loading States (with min duration)
+    const isDiscoveryLoading = useMinimumLoading(discoveryLoading, 600);
+    const isInsightsLoading = useMinimumLoading(false, 400); // Artificial polish for stats calculation
 
     // App UI State
     const [activeTab, setActiveTab] = useState("all");
@@ -48,6 +53,15 @@ function AppContent() {
     useEffect(() => {
         localStorage.setItem("movieApp_viewMode", viewMode);
     }, [viewMode]);
+
+    // Custom Event Listener for Tab Switching (from CTAs)
+    useEffect(() => {
+        const handleSwitchTab = (e) => {
+            if (e.detail) setActiveTab(e.detail);
+        };
+        window.addEventListener('switch-tab', handleSwitchTab);
+        return () => window.removeEventListener('switch-tab', handleSwitchTab);
+    }, []);
 
     // Helpers
     const isWatched = useCallback((id) => watched.some(m => m.id === id || m.tmdb_id === id), [watched]);
@@ -115,6 +129,7 @@ function AppContent() {
                                 viewMode={viewMode}
                                 popular={popular}
                                 recommended={recommended}
+                                loading={isDiscoveryLoading}
                                 carouselRef={carouselRef}
                                 scrollCarousel={scrollCarousel}
                                 isWatched={isWatched}
@@ -162,7 +177,7 @@ function AppContent() {
 
                     {activeTab === "insights" && (
                         <PageWrapper title="Insights">
-                            <InsightsPage stats={watchStats} />
+                            <InsightsPage stats={watchStats} loading={isInsightsLoading} />
                         </PageWrapper>
                     )}
                 </>

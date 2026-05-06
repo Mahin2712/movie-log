@@ -86,10 +86,58 @@ export const InsightsSkeleton = () => (
  * GridSkeleton
  * A helper to render multiple card skeletons.
  */
-export const GridSkeleton = ({ count = 10 }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+export const GridSkeleton = ({ count = 10, className = "" }) => (
+    <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 ${className}`}>
         {Array.from({ length: count }).map((_, i) => (
             <CardSkeleton key={i} />
+        ))}
+    </div>
+);
+
+/**
+ * AllPageSkeleton
+ * Replicates the new Discovery layout (Hero + Two Rows).
+ */
+export const AllPageSkeleton = () => (
+    <div className="flex flex-col gap-10 w-full animate-in fade-in duration-500">
+        {/* Hero Skeleton */}
+        <SkeletonBase className="w-full aspect-[21/9] md:aspect-[25/9] rounded-[2.5rem]" />
+        
+        {/* Rows */}
+        {[1, 2].map(row => (
+            <div key={row} className="flex flex-col gap-6">
+                <SkeletonBase className="h-8 w-48 rounded-lg" />
+                <div className="flex gap-6 overflow-hidden">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="w-40 md:w-48 flex-shrink-0">
+                            <CardSkeleton />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
+/**
+ * ListRowSkeleton
+ * Replicates the WatchedRow / MediaCard structure.
+ */
+export const ListRowSkeleton = () => (
+    <div className="flex gap-4 p-4 rounded-2xl bg-zinc-900/20 border border-white/5 animate-pulse">
+        <SkeletonBase className="w-16 h-24 rounded-lg flex-shrink-0" />
+        <div className="flex flex-col gap-2 flex-1 justify-center">
+            <SkeletonBase className="h-5 w-1/3 rounded-md" />
+            <SkeletonBase className="h-3 w-1/4 rounded-md" />
+            <SkeletonBase className="h-3 w-1/2 rounded-md mt-2" />
+        </div>
+    </div>
+);
+
+export const ListSkeleton = ({ count = 5 }) => (
+    <div className="flex flex-col gap-4">
+        {Array.from({ length: count }).map((_, i) => (
+            <ListRowSkeleton key={i} />
         ))}
     </div>
 );
