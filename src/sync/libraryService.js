@@ -82,8 +82,9 @@ class LibraryService {
         } else {
             // Logged in flow
             try {
-                console.log("LibraryService: Loading cloud library (User)");
+                console.log("%cLibraryService: Fetching cloud library...", "color: #3b82f6; font-weight: bold;");
                 const cloudLibrary = await readUserLibrary(this.user.uid);
+                console.log(`%cLibraryService: Cloud fetch success (${Object.keys(cloudLibrary).length} items)`, "color: #10b981;");
                 const localHydrated = readLocalLibrary();
 
                 // Merge cloud data with local hydrated cache
@@ -208,6 +209,7 @@ class LibraryService {
         // Full Sync (Fetch Cloud -> Hydrate)
         const lib = await this.loadLibrary();
         localStorage.setItem(`lastSyncAt_${this.user.uid}`, new Date().toISOString());
+        console.log("%cLibraryService: Full sync complete.", "color: #10b981; font-weight: bold;");
         return lib;
     }
 
@@ -256,9 +258,9 @@ class LibraryService {
             try {
                 const { deleteLibraryItem } = await import("./firestoreAdapter");
                 await deleteLibraryItem(this.user.uid, item);
-                console.log(`LibraryService: Deleted ${mediaType}:${tmdbId} from cloud.`);
+                console.log(`%cLibraryService: Deleted ${mediaType}:${tmdbId} from cloud.`, "color: #10b981; font-weight: bold;");
             } catch (error) {
-                console.error("Failed to remove item from cloud", error);
+                console.error("%cLibraryService: Cloud deletion failed", "color: #ef4444;", error);
             }
         }
     }

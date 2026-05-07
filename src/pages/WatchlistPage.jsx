@@ -106,9 +106,9 @@ export default function WatchlistPage({
       {/* HEADER */}
       <header className="flex flex-col gap-2">
         <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase text-white leading-[0.8] mb-1">
-          Watchlist <span className="text-blue-500">.</span>
+          My Collection <span className="text-blue-500">.</span>
         </h1>
-        <p className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Your curated collection of cinema.</p>
+        <p className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Your curated library of cinematic tracking.</p>
       </header>
 
       {/* FILTER BAR */}
@@ -158,10 +158,14 @@ export default function WatchlistPage({
               : null;
             return (
               <MediaGridCard
-                key={item.id}
+                key={`${item.id}-${item.media_type}`}
                 item={item}
-                daysAgo={daysAgo}
                 mode="watchlist"
+                rating={ratings[item.id]}
+                daysAgo={daysAgo}
+                onSetRating={onSetRating}
+                onRemove={() => onRemove(item)}
+                onMoveToWishlist={() => onMoveToWishlist(item)}
                 onOpenDetail={() => onSelect?.(item)}
               />
             );

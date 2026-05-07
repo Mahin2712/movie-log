@@ -64,8 +64,17 @@ function AppContent() {
     }, []);
 
     // Helpers
-    const isWatched = useCallback((id) => watched.some(m => m.id === id || m.tmdb_id === id), [watched]);
-    const isWishlisted = useCallback((id) => wishlist.some(m => m.id === id || m.tmdb_id === id), [wishlist]);
+    const isWatched = useCallback((itemOrId) => {
+        const id = typeof itemOrId === 'object' ? (itemOrId.tmdb_id || itemOrId.id) : itemOrId;
+        const result = watched.some(m => m.tmdb_id === id || m.id === id);
+        console.log(`isWatched check: ${id} -> ${result}`);
+        return result;
+    }, [watched]);
+
+    const isWishlisted = useCallback((itemOrId) => {
+        const id = typeof itemOrId === 'object' ? (itemOrId.tmdb_id || itemOrId.id) : itemOrId;
+        return wishlist.some(m => m.tmdb_id === id || m.id === id);
+    }, [wishlist]);
     
     const scrollCarousel = (dir = "right") => {
         const el = carouselRef.current;
@@ -113,7 +122,10 @@ function AppContent() {
                     
                     <SearchResultsGrid
                         viewMode={viewMode}
-                        results={searchResults.filter(item => searchFilter === "all" ? true : item.media_type === searchFilter)}
+                        results={React.useMemo(() => 
+                            searchResults.filter(item => searchFilter === "all" ? true : item.media_type === searchFilter),
+                            [searchResults, searchFilter]
+                        )}
                         isInWatchlist={isWatched}
                         isInWishlist={isWishlisted}
                         onAddWatchlist={actions.addToWatchlist}
@@ -155,7 +167,7 @@ function AppContent() {
                                 genresMap={genresMap}
                                 ratings={ratings}
                                 onRemove={(item) => actions.removeFromLibrary(item.id)}
-                                onSetRating={(item, rating) => actions.setRating(item.id, rating)}
+                                onSetRating={actions.setRating}
                                 onMoveToWishlist={(item) => actions.addToWishlist(item)}
                                 onSelect={setSelectedMedia}
                             />

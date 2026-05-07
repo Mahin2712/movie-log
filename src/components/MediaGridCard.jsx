@@ -1,9 +1,12 @@
+import React, { memo } from "react";
 import { IMG_BASE } from "../utils/constants";
 
-export default function MediaGridCard({
+const MediaGridCard = memo(({
   item,
   daysAgo,
   mode,
+  rating,
+  onSetRating,
   onMarkWatched,
   onAddToWatchlist,
   onAddToWishlist,
@@ -33,28 +36,32 @@ export default function MediaGridCard({
   if (mode === "all" || mode === "search") {
     return (
       <div
-        className="group relative bg-zinc-900/40 rounded-2xl overflow-hidden border border-white/5 hover:border-blue-500/50 transition-all duration-300 cursor-pointer flex flex-col h-full shadow-lg"
+        className="group relative bg-zinc-900/40 rounded-2xl overflow-hidden border border-white/5 hover:border-blue-500/50 transition-all duration-400 cursor-pointer flex flex-col h-full shadow-lg group-hover:shadow-blue-500/10"
         onClick={handleCardClick}
       >
         <div className="relative aspect-[2/3] overflow-hidden">
-          {item.poster_path ? (
-            <img
-              src={IMG_BASE + item.poster_path}
-              alt={item.title || item.name}
-              loading="lazy"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-          ) : (
-            <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-600 text-xs italic">
-              No Poster
-            </div>
-          )}
+          <img
+            src={item.poster_path ? IMG_BASE + item.poster_path : "https://via.placeholder.com/300x450?text=No+Poster"}
+            alt={item.title || item.name}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
           
-          {/* Media Type Badge */}
-          <div className="absolute top-2 left-2 z-10">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 ${item.media_type === "movie" ? "bg-blue-600/80" : "bg-purple-600/80"} text-white`}>
+          {/* Top Badges */}
+          <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10 pointer-events-none">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 ${item.media_type === "movie" ? "bg-blue-600/80" : "bg-purple-600/80"} text-white shadow-lg`}>
               {item.media_type === "movie" ? "Movie" : "TV"}
             </span>
+
+            {/* Rating Badge (Compact) */}
+            {(item.vote_average > 0) && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg backdrop-blur-md bg-black/40 border border-white/10 text-yellow-500 shadow-lg">
+                <span className="text-[9px] font-black">{item.vote_average?.toFixed(1)}</span>
+                <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              </div>
+            )}
           </div>
         </div>
 
@@ -69,9 +76,9 @@ export default function MediaGridCard({
 
           <div className="mt-auto flex items-center gap-2">
             <button
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5
+              className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5
                 ${isInWatchlist 
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
                   : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 active:scale-95"
                 }`}
               disabled={isInWatchlist}
@@ -80,14 +87,25 @@ export default function MediaGridCard({
                 onAddToWatchlist?.(item);
               }}
             >
-              {isInWatchlist ? "Watched" : "+ Watched"}
+               {isInWatchlist ? (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Watched
+                </>
+              ) : (
+                <>
+                  <span className="text-sm">+</span> Watched
+                </>
+              )}
             </button>
 
             <button
-              className={`p-1.5 rounded-lg border transition-all active:scale-90
+              className={`p-2 rounded-xl border transition-all active:scale-90
                 ${isInWishlist 
-                  ? "bg-rose-500/20 border-rose-500/40 text-rose-400" 
-                  : "bg-zinc-800/50 border-white/5 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                  ? "bg-rose-500/20 border-rose-500/30 text-rose-400" 
+                  : "bg-zinc-800/50 border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-700"
                 } ${isInWatchlist ? "opacity-30 pointer-events-none" : ""}`}
               disabled={isInWishlist || isInWatchlist}
               onClick={(e) => {
@@ -96,7 +114,7 @@ export default function MediaGridCard({
               }}
             >
               <svg className="w-4 h-4" fill={isInWishlist ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </button>
           </div>
@@ -126,12 +144,42 @@ export default function MediaGridCard({
         />
 
         {/* Top Badges */}
-        <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10 pointer-events-none">
+        <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-20 pointer-events-none">
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-white/10 shadow-lg ${item.media_type === "movie" || !item.media_type ? "bg-blue-600/80" : "bg-purple-600/80"} text-white`}>
             {item.media_type === "movie" || !item.media_type ? "Movie" : "TV"}
           </span>
 
-          {mode === "wishlist" && (
+          {/* Premium Rating Badge */}
+          {(onSetRating || rating) && (
+            <div className="flex flex-col items-end gap-1 pointer-events-auto">
+              <div className={`group/rating relative flex items-center gap-1 px-2 py-1 rounded-xl backdrop-blur-xl border border-white/10 shadow-2xl transition-all duration-300 ${rating ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-black/40 text-white/70 hover:bg-black/60'}`}>
+                <span className="text-[10px] font-black">{rating || item.vote_average?.toFixed(1) || '0.0'}</span>
+                <svg className={`w-3 h-3 ${rating ? 'fill-yellow-500' : 'fill-white/30 group-hover/rating:fill-white/70'}`} viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+
+                {/* Hover Rating Selector */}
+                {onSetRating && (
+                  <div className="absolute top-full right-0 mt-2 p-2 bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/rating:opacity-100 group-hover/rating:translate-y-0 group-hover/rating:pointer-events-auto transition-all duration-300 z-50 flex items-center gap-0.5">
+                    {[1,2,3,4,5,6,7,8,9,10].map(val => (
+                      <button
+                        key={val}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetRating(item.id, val);
+                        }}
+                        className={`w-6 h-8 rounded-md flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-90 ${rating === val ? 'bg-yellow-500 text-black' : 'hover:bg-white/10 text-zinc-400 hover:text-white'}`}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {mode === "wishlist" && !rating && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -191,4 +239,6 @@ export default function MediaGridCard({
       </div>
     </div>
   );
-}
+});
+
+export default MediaGridCard;

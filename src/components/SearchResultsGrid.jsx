@@ -46,16 +46,23 @@ export default function SearchResultsGrid({
                                     <div className="flex flex-wrap gap-2">
                                         <button
                                             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${inWatchlist
-                                                ? "bg-green-900/30 text-green-400 border border-green-800 cursor-default"
-                                                : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700"
+                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                : "bg-blue-600 text-white hover:bg-blue-500 shadow-md active:scale-95"
                                                 }`}
                                             disabled={inWatchlist}
                                             onClick={() => !inWatchlist && onAddWatchlist(item)}
                                         >
                                             {inWatchlist ? (
-                                                <>✓ Watched</>
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Watched
+                                                </>
                                             ) : (
-                                                "Mark watched"
+                                                <>
+                                                    <span className="text-base font-bold">+</span> Watched
+                                                </>
                                             )}
                                         </button>
 
