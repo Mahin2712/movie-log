@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 /**
  * Unified action buttons for media items (Watched, Wishlist)
@@ -12,16 +12,34 @@ const MediaActionButtons = ({
     layout = "grid", // "grid" or "list"
     className = ""
 }) => {
-    const handleWatchlist = (e) => {
+    const [pendingAction, setPendingAction] = useState(null);
+
+    const handleWatchlist = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        onAddToWatchlist?.(item);
+        setPendingAction('watchlist');
+        try {
+            await onAddToWatchlist?.(item);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setPendingAction(null);
+        }
     };
 
-    const handleWishlist = (e) => {
+    const handleWishlist = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isInWatchlist) onAddToWishlist?.(item);
+        if (!isInWatchlist) {
+            setPendingAction('wishlist');
+            try {
+                await onAddToWishlist?.(item);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setPendingAction(null);
+            }
+        }
     };
 
     if (layout === "list") {
@@ -32,21 +50,19 @@ const MediaActionButtons = ({
                         ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                         : "bg-blue-600 text-white hover:bg-blue-500 shadow-md active:scale-95"
                         }`}
-                    disabled={isInWatchlist}
+                    disabled={isInWatchlist || pendingAction !== null}
                     onClick={handleWatchlist}
                 >
-                    {isInWatchlist ? (
-                        <>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                            ✓ Watched
-                        </>
+                    {pendingAction === 'watchlist' ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : isInWatchlist ? (
+                        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
                     ) : (
-                        <>
-                            <span className="text-base font-bold">+</span> Watched
-                        </>
+                        <span className="text-base font-bold">+</span>
                     )}
+                    Watched
                 </button>
 
                 <button
@@ -56,11 +72,17 @@ const MediaActionButtons = ({
                             ? "bg-red-900/20 border-red-800 text-red-500"
                             : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"
                         }`}
-                    disabled={isInWatchlist}
+                    disabled={isInWatchlist || pendingAction !== null}
                     onClick={handleWishlist}
                     title={isInWatchlist ? "Already watched" : isInWishlist ? "In Wishlist" : "Add to Wishlist"}
                 >
-                    {isInWishlist ? "♥" : "♡"}
+                    {pendingAction === 'wishlist' ? (
+                        <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                    ) : isInWishlist ? (
+                        "♥"
+                    ) : (
+                        "♡"
+                    )}
                 </button>
             </div>
         );
@@ -74,20 +96,19 @@ const MediaActionButtons = ({
                 ${isInWatchlist 
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
                     : "bg-blue-600 text-white hover:bg-blue-500 border-blue-400 shadow-blue-900/20"}`}
+                disabled={isInWatchlist || pendingAction !== null}
                 onClick={handleWatchlist}
             >
-                {isInWatchlist ? (
-                    <>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                        ✓ Watched
-                    </>
+                {pendingAction === 'watchlist' ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : isInWatchlist ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
                 ) : (
-                    <>
-                        <span className="text-sm">+</span> Watched
-                    </>
+                    <span className="text-sm">+</span>
                 )}
+                Watched
             </button>
 
             <button
@@ -98,9 +119,13 @@ const MediaActionButtons = ({
                         ? "bg-red-900/20 border-red-800 text-red-500" 
                         : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-600"}`}
                 onClick={handleWishlist}
-                disabled={isInWatchlist}
+                disabled={isInWatchlist || pendingAction !== null}
             >
-                <span className="text-lg">{isInWishlist ? "♥" : "♡"}</span>
+                {pendingAction === 'wishlist' ? (
+                    <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                    <span className="text-lg">{isInWishlist ? "♥" : "♡"}</span>
+                )}
             </button>
         </div>
     );

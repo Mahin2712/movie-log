@@ -34,29 +34,17 @@ export function useLibraryActions() {
             updatedAt: new Date().toISOString()
         };
         
-        // 1. Optimistic Update
-        setLibrary(prev => ({ ...prev, [newItem.id]: newItem }));
-
         try {
-            // 2. Cloud Sync
+            // 1. Cloud & local storage Sync first
             const saved = await libraryService.saveItem(newItem);
             
-            // 3. Only finalize if no newer mutation has started for this item
+            // 2. Only update state on success if no newer mutation has started
             if (isMutationLatest(newItem.id, mutationId)) {
                 setLibrary(prev => ({ ...prev, [saved.id]: saved }));
             }
             return saved;
         } catch (error) {
             console.error("Add to watchlist failed", error);
-            
-            // 4. Rollback only if no newer mutation happened
-            if (isMutationLatest(newItem.id, mutationId)) {
-                setLibrary(prev => {
-                    const next = { ...prev };
-                    delete next[newItem.id];
-                    return next;
-                });
-            }
             throw error;
         }
     }, [setLibrary]);
@@ -71,9 +59,6 @@ export function useLibraryActions() {
             updatedAt: new Date().toISOString()
         };
         
-        // 1. Optimistic Update
-        setLibrary(prev => ({ ...prev, [newItem.id]: newItem }));
-
         try {
             const saved = await libraryService.saveItem(newItem);
             if (isMutationLatest(newItem.id, mutationId)) {
@@ -82,13 +67,6 @@ export function useLibraryActions() {
             return saved;
         } catch (error) {
             console.error("Add to wishlist failed", error);
-            if (isMutationLatest(newItem.id, mutationId)) {
-                setLibrary(prev => {
-                    const next = { ...prev };
-                    delete next[newItem.id];
-                    return next;
-                });
-            }
             throw error;
         }
     }, [setLibrary]);
@@ -99,27 +77,22 @@ export function useLibraryActions() {
 
         const mutationId = trackMutation(id);
 
-        // 1. Optimistic Remove
-        setLibrary(prev => {
-            const next = { ...prev };
-            delete next[id];
-            return next;
-        });
-
         try {
             await libraryService.removeItem(item.media_type, item.tmdb_id);
+            if (isMutationLatest(id, mutationId)) {
+                setLibrary(prev => {
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                });
+            }
         } catch (error) {
             console.error("Remove from library failed", error);
-            // 2. Rollback if latest
-            if (isMutationLatest(id, mutationId)) {
-                setLibrary(prev => ({ ...prev, [id]: item }));
-            }
             throw error;
         }
     }, [library, setLibrary]);
 
     const setRating = useCallback(async (itemOrId, value) => {
-        // 1. Resolve Item and ID
         let item;
         let id;
         
@@ -146,27 +119,13 @@ export function useLibraryActions() {
             updatedAt: new Date().toISOString()
         };
 
-        // 2. Optimistic Update
-        setLibrary(prev => ({ ...prev, [id]: newItem }));
-
         try {
             const saved = await libraryService.saveItem(newItem);
             if (isMutationLatest(id, mutationId)) {
-                setLibrary(prev => ({ ...prev, [saved.id]: saved }));
+                setLibrary(prev => ({ ...prev, [id]: saved }));
             }
         } catch (error) {
             console.error("Set rating failed", error);
-            if (isMutationLatest(id, mutationId)) {
-                setLibrary(prev => {
-                    const next = { ...prev };
-                    if (library[id]) {
-                        next[id] = library[id];
-                    } else {
-                        delete next[id];
-                    }
-                    return next;
-                });
-            }
             throw error;
         }
     }, [library, setLibrary]);
@@ -176,9 +135,6 @@ export function useLibraryActions() {
         const prevItem = library[norm.id];
         const mutationId = trackMutation(norm.id);
         
-        // 1. Optimistic
-        setLibrary(prev => ({ ...prev, [norm.id]: norm }));
-
         try {
             const saved = await libraryService.saveItem(norm);
             if (isMutationLatest(norm.id, mutationId)) {
@@ -187,12 +143,9 @@ export function useLibraryActions() {
             return saved;
         } catch (error) {
             console.error("Update item failed", error);
-            if (isMutationLatest(norm.id, mutationId) && prevItem) {
-                setLibrary(prev => ({ ...prev, [norm.id]: prevItem }));
-            }
             throw error;
         }
-    }, [library, setLibrary]);
+    }, [setLibrary]);
 
     return {
         addToWatchlist,

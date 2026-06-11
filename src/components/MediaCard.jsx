@@ -11,6 +11,7 @@ export default function MediaCard({
   onRemove,
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // Date Logic
   const year =
@@ -90,24 +91,69 @@ export default function MediaCard({
         <div className="flex gap-2 mt-auto pt-4">
           {status !== "watched" && (
             <button
-              className="btn btn-sm px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
-              onClick={() => onWatch?.(item)}
+              disabled={pendingAction !== null}
+              className="btn btn-sm px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors shadow-lg shadow-blue-900/20 flex items-center gap-1.5 disabled:opacity-50"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setPendingAction('watch');
+                try {
+                  await onWatch?.(item);
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setPendingAction(null);
+                }
+              }}
             >
+              {pendingAction === 'watch' && (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
               ✓ Watched
             </button>
           )}
 
           {status !== "wishlist" && (
-            <button className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors" onClick={() => onWishlist?.(item)}>
+            <button 
+              disabled={pendingAction !== null}
+              className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors flex items-center gap-1.5 disabled:opacity-50" 
+              onClick={async (e) => {
+                e.stopPropagation();
+                setPendingAction('wishlist');
+                try {
+                  await onWishlist?.(item);
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setPendingAction(null);
+                }
+              }}
+            >
+              {pendingAction === 'wishlist' && (
+                <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+              )}
               ♡ Wishlist
             </button>
           )}
 
           {status && (
             <button
-              className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors"
-              onClick={() => onRemove?.(item.id)}
+              disabled={pendingAction !== null}
+              className="btn btn-sm px-4 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium border border-white/5 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setPendingAction('remove');
+                try {
+                  await onRemove?.(item.id);
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setPendingAction(null);
+                }
+              }}
             >
+              {pendingAction === 'remove' && (
+                <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+              )}
               Remove
             </button>
           )}

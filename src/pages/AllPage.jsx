@@ -20,6 +20,7 @@ export default function AllPage({
   onToggleWishlist,
   onOpenDetail,
 }) {
+  const [pendingHero, setPendingHero] = React.useState(false);
   // Hero movie (pick the first popular item)
   const heroMovie = popular[0];
   
@@ -68,10 +69,33 @@ export default function AllPage({
                     View Details
                 </button>
                 <button 
-                    onClick={() => onAddWatched(heroMovie)}
-                    className="px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-xs uppercase tracking-widest transition-all hover:bg-white/20 active:scale-95"
+                    disabled={pendingHero || isWatched(heroMovie.id)}
+                    onClick={async () => {
+                        setPendingHero(true);
+                        try {
+                            await onAddWatched(heroMovie);
+                        } catch (err) {
+                            console.error(err);
+                        } finally {
+                            setPendingHero(false);
+                        }
+                    }}
+                    className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 ${
+                        isWatched(heroMovie.id)
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20"
+                    }`}
                 >
-                    + Watchlist
+                    {pendingHero ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : isWatched(heroMovie.id) ? (
+                        <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <span className="text-sm">+</span>
+                    )}
+                    {isWatched(heroMovie.id) ? "Watched" : "Watchlist"}
                 </button>
             </div>
           </div>

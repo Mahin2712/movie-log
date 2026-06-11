@@ -16,6 +16,8 @@ export default function ShowDetailPage({
     const [loadingSeasons, setLoadingSeasons] = useState(new Set());
     const [ratingHover, setRatingHover] = useState(null);
     const [details, setDetails] = useState(null);
+    const [actionLoading, setActionLoading] = useState(null);
+    const [loadingEpisode, setLoadingEpisode] = useState(null);
     const { removeFromLibrary } = useLibraryActions();
 
     const tmdbId = useMemo(() => {
@@ -156,8 +158,9 @@ export default function ShowDetailPage({
         return mediaData.progress?.watchedItems?.[`${seasonNum}_${epNum}`] === true;
     };
 
-    const toggleEpisode = (seasonNum, epNum) => {
+    const toggleEpisode = async (seasonNum, epNum) => {
         const key = `${seasonNum}_${epNum}`;
+        setLoadingEpisode(key);
         const currentWatched = mediaData.progress?.watchedItems || {};
         const isWatched = currentWatched[key];
 
@@ -173,40 +176,67 @@ export default function ShowDetailPage({
         const totalEpisodes = mediaData.number_of_episodes || 0;
         const percent = totalEpisodes > 0 ? (totalWatched / totalEpisodes) * 100 : 0;
 
-        onUpdateShow({
-            ...mediaData,
-            status: mediaData.status && mediaData.status !== 'wishlist' ? mediaData.status : 'watching',
-            progress: {
-                ...mediaData.progress,
-                watchedItems: newWatchedItems,
-                watchedEpisodes: totalWatched,
-                percentComplete: Math.round(percent)
-            }
-        });
+        try {
+            await onUpdateShow({
+                ...mediaData,
+                status: mediaData.status && mediaData.status !== 'wishlist' ? mediaData.status : 'watching',
+                progress: {
+                    ...mediaData.progress,
+                    watchedItems: newWatchedItems,
+                    watchedEpisodes: totalWatched,
+                    percentComplete: Math.round(percent)
+                }
+            });
+        } catch (err) {
+            console.error("Failed to toggle episode:", err);
+        } finally {
+            setLoadingEpisode(null);
+        }
     };
 
-    const setMovieRating = (val) => {
-        onUpdateShow({
-            ...mediaData,
-            rating: val,
-            status: mediaData.status && mediaData.status !== 'wishlist' ? mediaData.status : 'watched',
-            updatedAt: new Date().toISOString()
-        });
+    const setMovieRating = async (val) => {
+        setActionLoading('rating');
+        try {
+            await onUpdateShow({
+                ...mediaData,
+                rating: val,
+                status: mediaData.status && mediaData.status !== 'wishlist' ? mediaData.status : 'watched',
+                updatedAt: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error("Failed to set rating:", err);
+        } finally {
+            setActionLoading(null);
+        }
     };
 
-    const toggleMovieStatus = () => {
+    const toggleMovieStatus = async () => {
         const newStatus = mediaData.status === 'wishlist' ? 'watched' : 'wishlist';
-        onUpdateShow({
-            ...mediaData,
-            status: newStatus,
-            updatedAt: new Date().toISOString()
-        });
+        setActionLoading('status');
+        try {
+            await onUpdateShow({
+                ...mediaData,
+                status: newStatus,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error("Failed to toggle status:", err);
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     const handleRemove = async () => {
         if (window.confirm("Are you sure you want to remove this from your library?")) {
-            await removeFromLibrary(mediaData.id || show.id);
-            onClose();
+            setActionLoading('remove');
+            try {
+                await removeFromLibrary(mediaData.id || show.id);
+                onClose();
+            } catch (err) {
+                console.error("Failed to remove show:", err);
+            } finally {
+                setActionLoading(null);
+            }
         }
     };
 
@@ -316,8 +346,12 @@ export default function ShowDetailPage({
                                         </span>
                                         <button
                                             onClick={toggleMovieStatus}
-                                            className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                                            disabled={actionLoading !== null}
+                                            className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                                         >
+                                            {actionLoading === 'status' && (
+                                                <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                            )}
                                             Mark as {mediaData.status === 'wishlist' ? 'Watched' : 'Wishlist'}
                                         </button>
                                     </div>
@@ -328,17 +362,21 @@ export default function ShowDetailPage({
                                 <div className="flex flex-col gap-2">
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Your Rating</span>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-3xl font-black text-white">
+                                        <span className="text-3xl font-black text-white flex items-center gap-2">
+                                            {actionLoading === 'rating' && (
+                                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                            )}
                                             {mediaData.rating ? `${mediaData.rating}/10` : 'Unrated'}
                                         </span>
                                         <div className="flex items-center gap-0.5">
                                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(val => (
                                                 <button
                                                     key={val}
+                                                    disabled={actionLoading !== null}
                                                     onMouseEnter={() => setRatingHover(val)}
                                                     onMouseLeave={() => setRatingHover(null)}
                                                     onClick={() => setMovieRating(val)}
-                                                    className={`w-6 h-8 rounded-md flex items-center justify-center text-[10px] font-black transition-all hover:scale-115 ${
+                                                    className={`w-6 h-8 rounded-md flex items-center justify-center text-[10px] font-black transition-all hover:scale-115 disabled:opacity-50 ${
                                                         (ratingHover !== null ? ratingHover >= val : (mediaData.rating || 0) >= val)
                                                             ? 'text-yellow-500' 
                                                             : 'text-zinc-600 hover:text-zinc-400'
@@ -356,9 +394,13 @@ export default function ShowDetailPage({
                                         <div className="w-full h-px bg-white/5" />
                                         <button
                                             onClick={handleRemove}
-                                            className="w-full py-3.5 rounded-2xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-black text-xs uppercase tracking-widest transition-all"
+                                            disabled={actionLoading !== null}
+                                            className="w-full py-3.5 rounded-2xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
-                                            Remove From Library
+                                            {actionLoading === 'remove' ? (
+                                                <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                            ) : null}
+                                            {actionLoading === 'remove' ? 'Removing...' : 'Remove From Library'}
                                         </button>
                                     </>
                                 )}
@@ -444,9 +486,13 @@ export default function ShowDetailPage({
                                 {mediaData.status && (
                                     <button
                                         onClick={handleRemove}
-                                        className="w-full py-3.5 rounded-2xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-black text-xs uppercase tracking-widest transition-all mt-2"
+                                        disabled={actionLoading !== null}
+                                        className="w-full py-3.5 rounded-2xl bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-black text-xs uppercase tracking-widest transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
-                                        Remove From Library
+                                        {actionLoading === 'remove' ? (
+                                            <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                        ) : null}
+                                        {actionLoading === 'remove' ? 'Removing...' : 'Remove From Library'}
                                     </button>
                                 )}
                             </div>
@@ -555,7 +601,11 @@ export default function ShowDetailPage({
                                                                         ) : (
                                                                             <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-900 text-2xl">🎬</div>
                                                                         )}
-                                                                        {watched && (
+                                                                        {loadingEpisode === `${season.season_number}_${ep.episode_number}` ? (
+                                                                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
+                                                                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                                                            </div>
+                                                                        ) : watched ? (
                                                                             <div className="absolute inset-0 bg-blue-600/30 flex items-center justify-center backdrop-blur-[2px] transition-all">
                                                                                 <div className="bg-blue-500 text-white rounded-full p-2 shadow-[0_0_20px_rgba(59,130,246,0.6)] scale-110">
                                                                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -563,8 +613,7 @@ export default function ShowDetailPage({
                                                                                     </svg>
                                                                                 </div>
                                                                             </div>
-                                                                        )}
-                                                                        {!watched && (
+                                                                        ) : (
                                                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                                                                                 <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
                                                                                     <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">

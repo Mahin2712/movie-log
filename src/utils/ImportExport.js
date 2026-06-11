@@ -121,8 +121,6 @@ export function exportWishlist({ wishlist }) {
 // IMPORT UTILITIES
 // ============================================================================
 
-// normalizeId and extractTmdbId now from service or local helper?
-// extractTmdbId is generic, let's keep it or move it? 
 export const extractTmdbId = (item) => {
   const keys = ["tmdb_id", "tmdb-id", "tmdbId", "tmdb", "movie_id", "id"];
   for (const k of keys) {
@@ -157,7 +155,38 @@ function deserializeProgress(compactProgress) {
   };
 }
 
+/**
+ * Deduplicates and merges imported items array before hydration
+ */
+export function deduplicateImportItems(items) {
+  const map = new Map();
+  for (const item of items) {
+    const tmdbId = normalizeId(item.tmdb_id);
+    const mediaType = item.media_type || "movie";
+    if (!tmdbId) continue;
+    const key = `${mediaType}_${tmdbId}`; // Standard key format
 
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, { ...item });
+    } else {
+      // Merge: prefer hydrated fields (title, year, etc.)
+      map.set(key, {
+        ...existing,
+        ...item,
+        title: item.title || existing.title || "",
+        year: item.year || existing.year || null,
+        poster_path: item.poster_path || existing.poster_path || undefined,
+        overview: item.overview || existing.overview || "",
+        rating: item.rating ?? existing.rating ?? null,
+        dateAdded: (item.dateAdded && existing.dateAdded)
+          ? (new Date(item.dateAdded) < new Date(existing.dateAdded) ? item.dateAdded : existing.dateAdded)
+          : (item.dateAdded || existing.dateAdded)
+      });
+    }
+  }
+  return Array.from(map.values());
+}
 
 /**
  * Main import function with hydration from TMDB
@@ -169,28 +198,21 @@ export async function hydrateFromTMDBAndImport({
   apiKey,
   importMedia,
   TMDB_BASE,
-  onProgress, // NEW: optional callback for progress updates
-  listContext // NEW: list context from export file
+  onProgress,
+  listContext
 }) {
   if (!items || items.length === 0) {
     alert("No items to import");
     return;
   }
 
-  /* 
-     Deprecated: We don't need 'media' existing map for checking duplicates strictly 
-     if we trust the merge/update logic. 
-     But to skip redundant API calls, we might want to know what's in the library.
-     We can fetch the library from libraryService locally?
-  */
+  // Deduplicate items first
+  const uniqueItems = deduplicateImportItems(items);
 
-  // Actually, we can just process everything. If it exists, we update.
-  // But strictly mimicking previous behavior:
   const existingMap = new Map();
-  // We'll rely on what's passed in via 'media' (which is the current library list from App.jsx)
-  // App.jsx passes 'watched' or 'wishlist' array.
   media.forEach(m => {
-    const key = `${m.tmdb_id}_${m.media_type}`;
+    // Standard key format: mediaType_tmdbId
+    const key = `${m.media_type}_${m.tmdb_id}`;
     existingMap.set(key, m);
   });
 
@@ -199,25 +221,21 @@ export async function hydrateFromTMDBAndImport({
   let failedCount = 0;
   const failedItems = [];
 
-  const BATCH_SIZE = 5; // Process 5 items concurrently
-  const totalItems = items.length;
+  const BATCH_SIZE = 5;
+  const totalItems = uniqueItems.length;
 
-  // Process items in batches
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = items.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < uniqueItems.length; i += BATCH_SIZE) {
+    const batch = uniqueItems.slice(i, i + BATCH_SIZE);
 
-    // Process batch items concurrently
     const batchPromises = batch.map(async (item) => {
       const tmdbId = normalizeId(item.tmdb_id);
       const mediaType = item.media_type || "movie";
 
-      // Skip if no TMDB ID
       if (!tmdbId) {
         return { status: 'skipped', reason: 'no_id' };
       }
 
-      // Skip if already exists
-      const key = `${tmdbId}_${mediaType}`;
+      const key = `${mediaType}_${tmdbId}`; // Standard key format
       if (existingMap.has(key)) {
         return { status: 'skipped', reason: 'duplicate', key };
       }
@@ -226,25 +244,25 @@ export async function hydrateFromTMDBAndImport({
       const result = await fetchTMDBDetails(tmdbId, mediaType);
 
       if (!result.success) {
-        // Hydration failed - create partial item
+        // Hydration failed - create partial item but preserve title/year from import if they exist
         const partialItem = {
           ...item,
           id: key,
+          title: item.title || `Untitled (${tmdbId})`,
+          year: item.year || null,
           _hydrationStatus: "partial",
-          poster_path: null,
-          overview: "Failed to load details from TMDB"
+          poster_path: item.poster_path || null,
+          overview: item.overview || "Failed to load details from TMDB"
         };
         return { status: 'failed', item: partialItem, key };
       }
 
-      // Success - merge TMDB data with user overlay
       const userOverlay = {
         dateAdded: item.dateAdded,
         rating: item.rating,
         status: item.status || (item.listType === 'wishlist' ? 'wishlist' : undefined)
       };
 
-      // Restore TV progress if present
       if (mediaType === "tv" && item.progress) {
         userOverlay.progress = deserializeProgress(item.progress);
       }
@@ -253,10 +271,8 @@ export async function hydrateFromTMDBAndImport({
       return { status: 'imported', item: hydratedItem, key };
     });
 
-    // Wait for all items in batch to complete
     const batchResults = await Promise.allSettled(batchPromises);
 
-    // Process batch results
     batchResults.forEach((result) => {
       if (result.status === 'fulfilled') {
         const data = result.value;
@@ -272,12 +288,10 @@ export async function hydrateFromTMDBAndImport({
           skippedCount++;
         }
       } else {
-        // Promise rejection (shouldn't happen but handle gracefully)
         skippedCount++;
       }
     });
 
-    // Report progress
     const processed = Math.min(i + BATCH_SIZE, totalItems);
     if (onProgress) {
       onProgress({
@@ -289,72 +303,27 @@ export async function hydrateFromTMDBAndImport({
       });
     }
 
-    // Rate limit: delay between batches (not per item)
-    if (i + BATCH_SIZE < items.length) {
+    if (i + BATCH_SIZE < uniqueItems.length) {
       await delay(200);
     }
   }
 
-  // Update store via LibraryService
-  // importMedia was previously setWatched/setWishlist (replacing state).
-  // Now we use libraryService.saveItems to append/merge.
-
-  // We filter out skipped/failed if we want, but existingMap contains EVERYTHING (old + new).
-  // We only want to save the *newly imported/updated* items to avoid re-writing everything.
-  // 'existingMap' has mixed old and new.
-
-  // Track modified items separately?
-  // Let's iterate over our batchResults and collect successful imports.
-  // Actually, for consistency, we only save what we processed successfully.
-
-  // Wait, existing logic: existingMap.set(key, data.item).
-  // importMedia(Array.from(existingMap.values())) -> Replaces whole list.
-
-  // New Logic: Just save the new/updated items.
+  // Save only new items to avoid rewriting everything!
   const itemsToSave = [];
-  // We need to loop again? No.
-  // Let's change the loop to push to itemsToSave.
+  existingMap.forEach((val, key) => {
+    const inOriginal = media.some(m => `${m.media_type}_${m.tmdb_id}` === key);
+    if (!inOriginal) {
+      itemsToSave.push(val);
+    }
+  });
 
-  // However, I can't easily change the big loop with multi_replace without replacing huge chunk.
+  if (itemsToSave.length > 0) {
+    await libraryService.saveItems(itemsToSave);
+  }
 
-  // Alternative: Collect all items from existingMap that were touched?
-  // Easier: Just save the `items` we parsed.
-  // But we need the hydrated version.
-
-  // Let's blindly save the values from existingMap that correspond to the import.
-  // Or simpler:
-  // Modify the loop to collect hydrated items into a `newItems` array.
-
-  // Since I can't rewrite the loop easily, let's look at what `importMedia` did.
-  // It took `vals`.
-
-  // I will replace this block to use `libraryService.saveItems`.
-  // I need to filter `existingMap.values()` to only include items that were part of this import, OR
-  // accept that we might rewrite some unmodified items if we rely on `media` passed in.
-
-  // If `media` passed in was the FULL library, existingMap is FULL.
-  // We probably don't want to batch write 1000 items if we imported 5.
-
-  // Let's assume for Phase 3, we just save *everything* in `existingMap` is SAFER but SLOW.
-  // BUT the prompt says "Import/Export ... rehydrates ...".
-
-  // I'll try to extract just the added/updated ones.
-  // The loop sets `existingMap.set(data.key, data.item)`.
-
-  // I can just rely on the fact that `existingMap` has the Latest state of everything.
-  // But wait, `App.jsx` passing `watched` (filtered view) as `media`.
-  // If we save only what's in `existingMap`, we might only save 'watched' items.
-  // That's fine.
-
-  // However, `batchSave` takes a list.
-
-  // Let's do:
-  await libraryService.saveItems(Array.from(existingMap.values()));
-
-  // Show results
   let message = `Import complete!\n\nImported: ${importedCount}\nSkipped (duplicates): ${skippedCount}`;
   if (failedCount > 0) {
-    message += `\n\n⚠️ Warning: ${failedCount} items couldn't be fully loaded from TMDB.\nThey were added with minimal information.`;
+    message += `\n\n⚠️ Warning: ${failedCount} items couldn't be fully loaded from TMDB.\nThey were added with metadata from import.`;
   }
   alert(message);
 }
@@ -372,19 +341,22 @@ export async function legacyImport({
 }) {
   const existingMap = new Map();
   media.forEach(m => {
-    const key = `${m.tmdb_id}_${m.media_type}`;
+    const key = `${m.media_type}_${m.tmdb_id}`; // Standard key format
     existingMap.set(key, m);
   });
 
   let importedCount = 0;
   let skippedCount = 0;
 
-  for (const item of items) {
+  // Deduplicate items first
+  const uniqueItems = deduplicateImportItems(items);
+  const itemsToSave = [];
+
+  for (const item of uniqueItems) {
     let tmdbId = extractTmdbId(item);
     tmdbId = normalizeId(tmdbId);
     const mediaType = item.media_type || "movie";
 
-    // Try to search by title if no ID
     if (!tmdbId && item.title) {
       const year =
         item.release_year ||
@@ -393,11 +365,15 @@ export async function legacyImport({
         "";
 
       const searchType = mediaType === "tv" ? "tv" : "movie";
-      const res = await fetch(
-        `${TMDB_BASE}/search/${searchType}?api_key=${apiKey}&query=${encodeURIComponent(item.title)}&year=${year}`
-      );
-      const data = await res.json();
-      tmdbId = normalizeId(data.results?.[0]?.id);
+      try {
+        const res = await fetch(
+          `${TMDB_BASE}/search/${searchType}?api_key=${apiKey}&query=${encodeURIComponent(item.title)}&year=${year}`
+        );
+        const data = await res.json();
+        tmdbId = normalizeId(data.results?.[0]?.id);
+      } catch (err) {
+        console.warn("Failed to search TMDB for legacy item", err);
+      }
 
       await delay(200);
     }
@@ -407,7 +383,7 @@ export async function legacyImport({
       continue;
     }
 
-    const key = `${tmdbId}_${mediaType}`;
+    const key = `${mediaType}_${tmdbId}`; // Standard key format
     if (existingMap.has(key)) {
       skippedCount++;
       continue;
@@ -422,29 +398,42 @@ export async function legacyImport({
         media_type: mediaType,
         dateAdded: item.dateAdded || new Date().toISOString()
       };
-      existingMap.set(key, normalized);
+      itemsToSave.push(normalized);
       importedCount++;
     } else {
       // Otherwise fetch from TMDB
-      const result = await fetchTMDBDetails(tmdbId, mediaType, apiKey, TMDB_BASE);
+      const result = await fetchTMDBDetails(tmdbId, mediaType);
       if (result.success) {
         const hydratedItem = tmdbToMediaItem(result.data, mediaType, {
           dateAdded: item.dateAdded,
           rating: item.rating,
           status: item.status
         });
-        existingMap.set(key, hydratedItem);
+        itemsToSave.push(hydratedItem);
         importedCount++;
       } else {
-        skippedCount++;
+        // Hydration failed, create partial item but preserve title
+        const partialItem = {
+          ...item,
+          id: key,
+          tmdb_id: tmdbId,
+          media_type: mediaType,
+          title: item.title || `Untitled (${tmdbId})`,
+          year: item.year || null,
+          _hydrationStatus: "partial",
+          dateAdded: item.dateAdded || new Date().toISOString()
+        };
+        itemsToSave.push(partialItem);
+        importedCount++;
       }
 
       await delay(200);
     }
   }
 
-  // importMedia(Array.from(existingMap.values()));
-  await libraryService.saveItems(Array.from(existingMap.values()));
+  if (itemsToSave.length > 0) {
+    await libraryService.saveItems(itemsToSave);
+  }
 
   alert(
     `Legacy import complete!\n\nImported: ${importedCount}\nSkipped: ${skippedCount}`
@@ -536,15 +525,9 @@ export async function handleImportFile({
       onProgress,
       listContext
     });
-
-    // Refresh library in App? 
-    // libraryService.saveItems updates local store, but App.jsx local state 'library' needs update.
-    // App.jsx should listen to changes or we trigger a reload.
-    // Since App.jsx doesn't subscribe, we might need a callback to force reload.
-    // But `importMedia` arg is effectively unused now.
-
-    // Ideally, App.jsx `useEffect` on `libraryService` state?
-    // Or we trigger a sync?
-    await libraryService.sync();
   }
+
+  // Sync and return the final synced library
+  const finalLibrary = await libraryService.sync();
+  return finalLibrary;
 }

@@ -33,6 +33,74 @@ class LibraryService {
     }
 
     /**
+     * Cleans up malformed/reversed key formats (e.g. 10020_movie) from Firestore
+     */
+    async cleanupMalformedKeys(uid, cloudLibrary) {
+        const malformedKeys = Object.keys(cloudLibrary).filter(key => /^\d+_(movie|tv)$/.test(key));
+        if (malformedKeys.length === 0) return cloudLibrary;
+
+        console.log(`LibraryService: Found ${malformedKeys.length} malformed cloud keys. Repairing...`);
+        const { batchWriteLibrary } = await import("./firestoreAdapter");
+        const updates = {};
+        const keysToDelete = [];
+
+        const cleanedLibrary = { ...cloudLibrary };
+
+        for (const malformedKey of malformedKeys) {
+            const malformedItem = cloudLibrary[malformedKey];
+            const tmdbId = Number(malformedItem.tmdb_id);
+            const mediaType = malformedItem.media_type;
+            const correctKey = `${mediaType}_${tmdbId}`;
+
+            // Merge if correct key already exists, otherwise convert
+            const existingCorrect = cleanedLibrary[correctKey];
+            let mergedItem;
+            if (existingCorrect) {
+                const { mergeItems } = await import("./mergeRules");
+                mergedItem = mergeItems(existingCorrect, malformedItem);
+            } else {
+                mergedItem = {
+                    ...malformedItem,
+                    id: correctKey
+                };
+            }
+
+            // Prune internal hydration status
+            if (mergedItem._hydrationStatus) {
+                delete mergedItem._hydrationStatus;
+            }
+
+            cleanedLibrary[correctKey] = mergedItem;
+            delete cleanedLibrary[malformedKey];
+
+            updates[correctKey] = mergedItem;
+            keysToDelete.push({ rawKey: malformedKey });
+        }
+
+        try {
+            // 1. Write corrected/merged items to cloud
+            await batchWriteLibrary(uid, updates);
+
+            // 2. Hard-delete malformed entries from cloud
+            const { db } = await import("../firebase/firestore");
+            const { writeBatch, doc } = await import("firebase/firestore");
+            const batch = writeBatch(db);
+            
+            keysToDelete.forEach(k => {
+                const malformedRef = doc(db, "users", uid, "library", k.rawKey);
+                batch.delete(malformedRef);
+            });
+            await batch.commit();
+
+            console.log("LibraryService: Malformed cloud keys successfully repaired and deleted.");
+        } catch (err) {
+            console.error("LibraryService: Malformed keys cloud cleanup failed:", err);
+        }
+
+        return cleanedLibrary;
+    }
+
+    /**
      * Batch save items (for import)
      */
     async saveItems(items) {
@@ -79,12 +147,34 @@ class LibraryService {
         if (!this.user) {
             console.log("LibraryService: Loading local library (Guest)");
             library = readLocalLibrary();
+            
+            // Clean up guest local malformed keys
+            const malformedKeys = Object.keys(library).filter(key => /^\d+_(movie|tv)$/.test(key));
+            if (malformedKeys.length > 0) {
+                console.log(`LibraryService: Cleaning up ${malformedKeys.length} malformed guest keys.`);
+                const { mergeItems } = await import("./mergeRules");
+                malformedKeys.forEach(key => {
+                    const item = library[key];
+                    const correctKey = `${item.media_type}_${item.tmdb_id}`;
+                    if (library[correctKey]) {
+                        library[correctKey] = mergeItems(library[correctKey], item);
+                    } else {
+                        library[correctKey] = { ...item, id: correctKey };
+                    }
+                    delete library[key];
+                });
+                writeLocalLibrary(library);
+            }
         } else {
             // Logged in flow
             try {
                 console.log("%cLibraryService: Fetching cloud library...", "color: #3b82f6; font-weight: bold;");
-                const cloudLibrary = await readUserLibrary(this.user.uid);
+                let cloudLibrary = await readUserLibrary(this.user.uid);
                 console.log(`%cLibraryService: Cloud fetch success (${Object.keys(cloudLibrary).length} items)`, "color: #10b981;");
+                
+                // Clean up malformed keys in cloud library first
+                cloudLibrary = await this.cleanupMalformedKeys(this.user.uid, cloudLibrary);
+                
                 const localHydrated = readLocalLibrary();
 
                 // Merge cloud data with local hydrated cache

@@ -14,8 +14,8 @@ export function sanitizeMovieForFirestore(movie) {
         media_type: "movie",
         status: movie.status || "watched",
         rating: movie.rating ?? null,
-        dateAdded: movie.dateAdded, // Assume it's already a valid timestamp/ISO string or handled by adapter
-        updatedAt: movie.updatedAt // Adapter will refresh this usually
+        dateAdded: movie.dateAdded || new Date().toISOString(),
+        updatedAt: movie.updatedAt || new Date().toISOString()
     };
 }
 
@@ -25,9 +25,9 @@ export function sanitizeTVForFirestore(show) {
         media_type: "tv",
         status: show.status || "watching",
         rating: show.rating ?? null,
-        progress: show.progress || { watchedEpisodes: [] }, // Ensure structure
-        dateAdded: show.dateAdded,
-        updatedAt: show.updatedAt
+        progress: show.progress || { watchedEpisodes: [] },
+        dateAdded: show.dateAdded || new Date().toISOString(),
+        updatedAt: show.updatedAt || new Date().toISOString()
     };
 }
 

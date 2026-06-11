@@ -14,6 +14,7 @@ export default function WatchedRow({
     const [open, setOpen] = useState(false);
     const [hover, setHover] = useState(null);
     const [expanded, setExpanded] = useState(false);
+    const [pendingAction, setPendingAction] = useState(null);
 
     // Prefer hover value if active, otherwise saved rating, defaulting to 0
     const displayRating = hover !== null ? hover : (rating || 0);
@@ -76,8 +77,17 @@ export default function WatchedRow({
                 </div>
 
                 {/* RATING DISPLAY: Absolute Top Right */}
-                <div className="absolute -top-1 sm:top-0 right-0 rating-display cursor-pointer hover:scale-105 transition-transform" onClick={() => setOpen(!open)}>
-                    {displayRating > 0 ? (
+                <div 
+                    className="absolute -top-1 sm:top-0 right-0 rating-display cursor-pointer hover:scale-105 transition-transform flex items-center gap-1 min-h-[28px] justify-center" 
+                    onClick={() => {
+                        if (pendingAction === null) {
+                            setOpen(!open);
+                        }
+                    }}
+                >
+                    {pendingAction === 'rating' ? (
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                    ) : displayRating > 0 ? (
                         <span
                             style={{
                                 background: "linear-gradient(90deg, #2196f3 0%, #21cbf3 100%)",
@@ -95,6 +105,7 @@ export default function WatchedRow({
                         <span className="star-icon muted text-zinc-600 hover:text-blue-400 text-xl sm:text-2xl">★</span>
                     )}
                 </div>
+
 
                 {/* Title & Year */}
                 <div className="pr-12 sm:pr-20">
@@ -176,10 +187,18 @@ export default function WatchedRow({
                                     <div
                                         className="absolute top-0 left-0 w-1/2 h-full z-10"
                                         onMouseEnter={() => setHover(i + 0.5)}
-                                        onClick={() => {
-                                            onSetRating(i + 0.5);
+                                        onClick={async () => {
+                                            if (pendingAction !== null) return;
                                             setOpen(false);
                                             setHover(null);
+                                            setPendingAction('rating');
+                                            try {
+                                                await onSetRating(i + 0.5);
+                                            } catch (err) {
+                                                console.error(err);
+                                            } finally {
+                                                setPendingAction(null);
+                                            }
                                         }}
                                     />
 
@@ -187,10 +206,18 @@ export default function WatchedRow({
                                     <div
                                         className="absolute top-0 right-0 w-1/2 h-full z-10"
                                         onMouseEnter={() => setHover(i + 1)}
-                                        onClick={() => {
-                                            onSetRating(i + 1);
+                                        onClick={async () => {
+                                            if (pendingAction !== null) return;
                                             setOpen(false);
                                             setHover(null);
+                                            setPendingAction('rating');
+                                            try {
+                                                await onSetRating(i + 1);
+                                            } catch (err) {
+                                                console.error(err);
+                                            } finally {
+                                                setPendingAction(null);
+                                            }
                                         }}
                                     />
                                 </div>
@@ -215,18 +242,52 @@ export default function WatchedRow({
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-auto pt-2 sm:pt-4">
-                    <button className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors" onClick={() => onRemove(item.id)}>
+                    <button 
+                        disabled={pendingAction !== null}
+                        className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors flex items-center gap-1.5 disabled:opacity-50" 
+                        onClick={async (e) => {
+                            e.stopPropagation();
+                            setPendingAction('remove');
+                            try {
+                                await onRemove(item.id);
+                            } catch (err) {
+                                console.error(err);
+                            } finally {
+                                setPendingAction(null);
+                            }
+                        }}
+                    >
+                        {pendingAction === 'remove' && (
+                            <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                        )}
                         Remove
                     </button>
 
-                    <button className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors" onClick={() => onMoveToWishlist(item.id)}>
+                    <button 
+                        disabled={pendingAction !== null}
+                        className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 text-[10px] sm:text-xs font-medium border border-white/5 transition-colors flex items-center gap-1.5 disabled:opacity-50" 
+                        onClick={async (e) => {
+                            e.stopPropagation();
+                            setPendingAction('wishlist');
+                            try {
+                                await onMoveToWishlist();
+                            } catch (err) {
+                                console.error(err);
+                            } finally {
+                                setPendingAction(null);
+                            }
+                        }}
+                    >
+                        {pendingAction === 'wishlist' && (
+                            <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                        )}
                         Wishlist
                     </button>
 
-
                     {(item.media_type === 'tv' || String(item.id).startsWith('tv_')) && (
                         <button
-                            className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs font-bold transition-colors shadow-lg shadow-blue-900/20"
+                            disabled={pendingAction !== null}
+                            className="btn btn-sm px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs font-bold transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50"
                             onClick={() => onSelect?.(item)}
                         >
                             Manage

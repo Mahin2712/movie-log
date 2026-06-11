@@ -14,6 +14,7 @@ const MediaGridCard = memo(({
   isInWishlist,
   onOpenDetail,
 }) => {
+  const [isPending, setIsPending] = React.useState(false);
   const handleCardClick = (e) => {
     e.stopPropagation();
     onOpenDetail?.(item);
@@ -120,23 +121,37 @@ const MediaGridCard = memo(({
           {/* Premium Rating Badge */}
           {(onSetRating || rating) && (
             <div className="flex flex-col items-end gap-1 pointer-events-auto">
-              <div className={`group/rating relative flex items-center gap-1 px-2 py-1 rounded-xl backdrop-blur-xl border border-white/10 shadow-2xl transition-all duration-300 ${rating ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-black/40 text-white/70 hover:bg-black/60'}`}>
-                <span className="text-[10px] font-black">{rating || item.vote_average?.toFixed(1) || '0.0'}</span>
-                <svg className={`w-3 h-3 ${rating ? 'fill-yellow-500' : 'fill-white/30 group-hover/rating:fill-white/70'}`} viewBox="0 0 24 24">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
+              <div className={`group/rating relative flex items-center gap-1 px-2 py-1 rounded-xl backdrop-blur-xl border border-white/10 shadow-2xl transition-all duration-300 ${isPending ? 'pointer-events-none bg-black/60 text-zinc-500' : rating ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30' : 'bg-black/40 text-white/70 hover:bg-black/60'}`}>
+                {isPending ? (
+                  <div className="w-3.5 h-3.5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                ) : (
+                  <>
+                    <span className="text-[10px] font-black">{rating || item.vote_average?.toFixed(1) || '0.0'}</span>
+                    <svg className={`w-3 h-3 ${rating ? 'fill-yellow-500' : 'fill-white/30 group-hover/rating:fill-white/70'}`} viewBox="0 0 24 24">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  </>
+                )}
 
                 {/* Hover Rating Selector */}
-                {onSetRating && (
+                {onSetRating && !isPending && (
                   <div className="absolute top-full right-0 mt-2 p-2 bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/rating:opacity-100 group-hover/rating:translate-y-0 group-hover/rating:pointer-events-auto transition-all duration-300 z-50 flex items-center gap-0.5">
                     {[1,2,3,4,5,6,7,8,9,10].map(val => (
                       <button
                         key={val}
-                        onClick={(e) => {
+                        disabled={isPending}
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          onSetRating(item.id, val);
+                          setIsPending(true);
+                          try {
+                            await onSetRating(item.id, val);
+                          } catch (err) {
+                            console.error(err);
+                          } finally {
+                            setIsPending(false);
+                          }
                         }}
-                        className={`w-6 h-8 rounded-md flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-90 ${rating === val ? 'bg-yellow-500 text-black' : 'hover:bg-white/10 text-zinc-400 hover:text-white'}`}
+                        className={`w-6 h-8 rounded-md flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-90 ${rating === val ? 'bg-yellow-500 text-black' : 'hover:bg-white/10 text-zinc-400 hover:text-white'} disabled:opacity-50`}
                       >
                         {val}
                       </button>
@@ -149,16 +164,28 @@ const MediaGridCard = memo(({
 
           {mode === "wishlist" && !rating && (
             <button
-              onClick={(e) => {
+              disabled={isPending}
+              onClick={async (e) => {
                 e.stopPropagation();
-                onMarkWatched?.(item);
+                setIsPending(true);
+                try {
+                  await onMarkWatched?.(item);
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setIsPending(false);
+                }
               }}
-              className="pointer-events-auto w-8 h-8 rounded-full bg-emerald-500/90 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform"
+              className="pointer-events-auto w-8 h-8 rounded-full bg-emerald-500/90 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform disabled:opacity-50"
               title="Mark as watched"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
+              {isPending ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
             </button>
           )}
         </div>
