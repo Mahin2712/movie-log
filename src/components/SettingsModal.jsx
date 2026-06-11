@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
+/**
+ * SettingsModal Component
+ * Redesigned for premium aesthetics and mobile responsiveness using Tailwind.
+ */
 export default function SettingsModal({
-  autoRefresh,
+  autoRefresh = 15,
   setAutoRefresh,
   onImport,
   onExportWatched,
@@ -11,12 +15,12 @@ export default function SettingsModal({
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [localAutoRefresh, setLocalAutoRefresh] = useState(autoRefresh);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file || null);
-    // Reset input value to allow re-selecting same file
-    e.target.value = '';
+    e.target.value = ''; // Reset input to allow re-selection
   };
 
   const handleClearFile = () => {
@@ -34,6 +38,8 @@ export default function SettingsModal({
       await onImport(selectedFile, (progressData) => {
         setProgress(progressData);
       });
+    } catch (err) {
+      console.error("Import error:", err);
     } finally {
       setImporting(false);
       setSelectedFile(null);
@@ -41,57 +47,74 @@ export default function SettingsModal({
     }
   };
 
+  const handleSave = () => {
+    if (setAutoRefresh) {
+      setAutoRefresh(localAutoRefresh);
+    }
+    localStorage.setItem("movieApp_refreshMins", String(localAutoRefresh));
+    onClose();
+  };
+
   const progressPercentage = progress && progress.total > 0
     ? Math.round((progress.processed / progress.total) * 100)
     : 0;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0 }}>Settings</h3>
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="relative bg-zinc-900/90 border border-white/10 rounded-[2rem] shadow-2xl p-6 sm:p-8 backdrop-blur-2xl max-w-md w-full flex flex-col gap-6 animate-in zoom-in duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Glow Background Decorator */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-[50px] pointer-events-none rounded-full" />
+
+        <div className="flex flex-col gap-1.5">
+          <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">
+            Settings <span className="text-blue-500">.</span>
+          </h3>
+          <p className="text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Customize your synchronization and backup data.</p>
+        </div>
 
         {/* AUTO REFRESH */}
-        <label style={{ display: "block", marginTop: 12, fontSize: 13, color: "var(--text-muted)" }}>
-          Auto refresh (mins)
-        </label>
-        <input
-          type="number"
-          min="1"
-          value={autoRefresh}
-          onChange={(e) =>
-            setAutoRefresh(Math.max(1, Number(e.target.value || 1)))
-          }
-          style={{ width: 120, padding: 8, borderRadius: 8, marginTop: 6 }}
-        />
-
-        {/* IMPORT/EXPORT */}
-        <div className="card" style={{ marginTop: 16, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ fontWeight: 600, fontSize: 17, marginBottom: 2, letterSpacing: 0.2 }}>
-            Import watched list
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">
+            Background Sync Interval
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min="1"
+              value={localAutoRefresh}
+              onChange={(e) => setLocalAutoRefresh(Math.max(1, Number(e.target.value || 1)))}
+              className="w-24 px-4 py-2.5 rounded-xl bg-zinc-800/60 border border-zinc-700/50 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 outline-none text-white text-sm transition-all"
+            />
+            <span className="text-sm font-semibold text-zinc-400">minutes</span>
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 2 }}>
-            Supports old & new exports (<b>CSV</b> / <b>JSON</b>). Duplicates will be skipped.
+        </div>
+
+        {/* DATA MANAGEMENT CARD */}
+        <div className="p-5 rounded-2xl bg-zinc-950/50 border border-white/5 flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h4 className="text-sm font-bold text-zinc-200">Data Transfer</h4>
+            <p className="text-[11px] text-zinc-500 font-medium">Import JSON or CSV exports. Existing duplicates will be skipped automatically.</p>
           </div>
 
           {/* FILE SELECTION ROW */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2, flexWrap: 'wrap' }}>
-            <label htmlFor="import-file" style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: importing ? '#555' : 'linear-gradient(90deg,#4f7cff,#38bdf8)',
-              color: '#fff',
-              padding: '8px 18px',
-              borderRadius: 10,
-              fontWeight: 500,
-              fontSize: 15,
-              cursor: importing ? 'not-allowed' : 'pointer',
-              boxShadow: importing ? 'none' : '0 2px 8px rgba(79,124,255,0.10)',
-              border: 'none',
-              transition: 'background 0.2s, box-shadow 0.2s',
-              opacity: importing ? 0.6 : 1
-            }}>
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label 
+              htmlFor="import-file" 
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all border border-transparent shadow-lg cursor-pointer ${
+                importing 
+                  ? 'bg-zinc-800 border-zinc-700/50 opacity-50 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20 active:scale-95'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
               Choose File
               <input
                 id="import-file"
@@ -99,38 +122,23 @@ export default function SettingsModal({
                 accept=".json,.csv"
                 onChange={handleFileSelect}
                 disabled={importing}
-                style={{ display: 'none' }}
+                className="hidden"
               />
             </label>
 
             {/* FILE NAME DISPLAY */}
             {selectedFile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                <span style={{
-                  fontSize: 13,
-                  color: 'var(--text-primary)',
-                  fontWeight: 500,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>
+              <div className="flex items-center gap-2 max-w-[200px] shrink">
+                <span className="text-xs font-semibold text-zinc-300 truncate">
                   {selectedFile.name}
                 </span>
                 {!importing && (
                   <button
                     onClick={handleClearFile}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      padding: 4,
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
+                    className="p-1 rounded-full text-zinc-500 hover:text-white transition-colors"
                   >
-                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <path d="M18 6L6 18M6 6l12 12" />
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 )}
@@ -143,19 +151,11 @@ export default function SettingsModal({
             <button
               onClick={handleStartImport}
               disabled={importing}
-              style={{
-                background: importing ? '#555' : 'linear-gradient(90deg,#10b981,#34d399)',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: 10,
-                fontWeight: 600,
-                fontSize: 15,
-                cursor: importing ? 'not-allowed' : 'pointer',
-                boxShadow: importing ? 'none' : '0 2px 8px rgba(16,185,129,0.15)',
-                transition: 'all 0.2s',
-                opacity: importing ? 0.6 : 1
-              }}
+              className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all shadow-md ${
+                importing
+                  ? 'bg-zinc-800 cursor-not-allowed opacity-50'
+                  : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-emerald-900/10'
+              }`}
             >
               {importing ? '⌛ Importing...' : '▶ Start Import'}
             </button>
@@ -163,51 +163,38 @@ export default function SettingsModal({
 
           {/* PROGRESS BAR */}
           {importing && progress && (
-            <div style={{ marginTop: 8 }}>
-              {/* Progress Bar */}
-              <div style={{
-                width: '100%',
-                height: 8,
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: 10,
-                overflow: 'hidden',
-                marginBottom: 8
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${progressPercentage}%`,
-                  background: 'linear-gradient(90deg,#4f7cff,#38bdf8)',
-                  transition: 'width 0.3s ease',
-                  borderRadius: 10
-                }} />
+            <div className="mt-2 flex flex-col gap-2.5">
+              <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                />
               </div>
-
-              {/* Progress Text */}
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                  {progress.processed}/{progress.total} items ({progressPercentage}%)
-                </div>
-                <div>
-                  Imported: <span style={{ color: '#10b981' }}>{progress.imported}</span> •
-                  Skipped: <span style={{ color: '#f59e0b' }}>{progress.skipped}</span> •
-                  Failed: <span style={{ color: '#ef4444' }}>{progress.failed}</span>
+              <div className="flex flex-col gap-1 text-[11px] font-medium text-zinc-500">
+                <span className="text-zinc-300 font-bold">
+                  Processed {progress.processed} of {progress.total} ({progressPercentage}%)
+                </span>
+                <div className="flex gap-2">
+                  <span>Imported: <span className="text-emerald-400 font-bold">{progress.imported}</span></span>
+                  <span>Skipped: <span className="text-yellow-500 font-bold">{progress.skipped}</span></span>
+                  <span>Failed: <span className="text-red-400 font-bold">{progress.failed}</span></span>
                 </div>
               </div>
             </div>
           )}
 
+          <div className="w-full h-px bg-white/5 my-1" />
+
           {/* EXPORT BUTTONS */}
-          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+          <div className="flex gap-3">
             <button
-              className="btn btn-primary"
-              style={{ flex: 1, minWidth: 0, transition: 'box-shadow 0.2s, background 0.2s', boxShadow: '0 2px 8px rgba(79,124,255,0.08)' }}
+              className="flex-1 py-3 px-2 text-center rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-white/10 text-white text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-md"
               onClick={onExportWatched}
             >
-              Export Watched List
+              Export Watched
             </button>
             <button
-              className="btn btn-primary"
-              style={{ flex: 1, minWidth: 0, background: 'linear-gradient(90deg,#ff5a7a,#ffb86c)', color: '#fff', border: 'none', transition: 'box-shadow 0.2s, background 0.2s', boxShadow: '0 2px 8px rgba(255,90,122,0.08)' }}
+              className="flex-1 py-3 px-2 text-center rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-white/10 text-white text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-md"
               onClick={onExportWishlist}
             >
               Export Wishlist
@@ -216,20 +203,21 @@ export default function SettingsModal({
         </div>
 
         {/* ACTIONS */}
-        <div style={{ marginTop: 14, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button className="btn" onClick={onClose}>Close</button>
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              localStorage.setItem("movieApp_refreshMins", String(autoRefresh));
-              onClose();
-              alert("Saved settings");
-            }}
+        <div className="flex justify-end gap-3 mt-2">
+          <button 
+            className="px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-zinc-300 hover:text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 border border-white/5"
+            onClick={onClose}
           >
-            Save
+            Cancel
+          </button>
+          <button
+            className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+            onClick={handleSave}
+          >
+            Save Changes
           </button>
         </div>
       </div>
-    </div >
+    </div>
   );
 }

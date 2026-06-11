@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import MobileNav from "../components/MobileNav";
 import { useLibrary } from "../hooks/useLibrary";
 
 /**
@@ -68,10 +69,19 @@ export default function AppShell({
                     onOpenMobileMenu={() => setMobileMenuOpen(true)}
                 />
 
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-28 md:pb-6 custom-scrollbar">
                     {children}
                 </main>
             </div>
+
+            {/* Bottom Mobile Tab Bar */}
+            <MobileNav 
+                activeTab={activeTab} 
+                onTabChange={(tab) => {
+                    setActiveTab(tab);
+                    onExitSearch();
+                }} 
+            />
         </div>
     );
 }

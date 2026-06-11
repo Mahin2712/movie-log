@@ -40,7 +40,7 @@ export default function WatchedRow({
     const seasonLabel = seasonCount ? `${seasonCount} Season${seasonCount === 1 ? '' : 's'}` : null;
 
     // Progress Calculation
-    const progressPercent = item.progress?.percentage || 0;
+    const progressPercent = item.progress?.percentComplete ?? item.progress?.percentage ?? 0;
     const progressRadius = 12; // Adjusted for smaller inline size (w-8 h-8)
     const progressCircumference = 2 * Math.PI * progressRadius;
     const progressOffset = progressCircumference - (progressPercent / 100) * progressCircumference;

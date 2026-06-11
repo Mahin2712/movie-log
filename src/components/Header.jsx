@@ -48,7 +48,7 @@ export default function Header({
         <div className="flex items-center gap-2">
           {/* Settings Button */}
           <button
-            className="p-2 text-zinc-400 hover:text-white rounded-full transition-colors focus:outline-none hidden sm:block"
+            className="p-2 text-zinc-400 hover:text-white rounded-full transition-colors focus:outline-none"
             title="Settings"
             onClick={onOpenSettings}
           >

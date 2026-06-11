@@ -91,7 +91,7 @@ class LibraryService {
                 const mergedLibrary = {};
                 const itemsToHydrate = [];
 
-                const { readDeletedItems } = await import("./firestoreAdapter");
+                const { readDeletedItems, batchWriteLibrary } = await import("./firestoreAdapter");
                 const deletedItemsMap = await readDeletedItems(this.user.uid);
 
                 Object.keys(cloudLibrary).forEach(key => {
@@ -115,6 +115,34 @@ class LibraryService {
                         }
                     }
                 });
+
+                // Find local-only (guest) items that are not in cloud and not tombstoned
+                const localOnlyKeys = Object.keys(localHydrated).filter(key => {
+                    const inCloud = !!cloudLibrary[key];
+                    const isDeleted = deletedItemsMap[key] === true;
+                    return !inCloud && !isDeleted;
+                });
+
+                if (localOnlyKeys.length > 0) {
+                    console.log(`LibraryService: Found ${localOnlyKeys.length} guest items. Uploading to cloud.`);
+                    const localOnlyMap = {};
+                    localOnlyKeys.forEach(key => {
+                        const localItem = localHydrated[key];
+                        // Ensure timestamps exist
+                        localItem.updatedAt = localItem.updatedAt || new Date().toISOString();
+                        localItem.dateAdded = localItem.dateAdded || new Date().toISOString();
+                        
+                        mergedLibrary[key] = localItem;
+                        localOnlyMap[key] = localItem;
+                    });
+                    
+                    try {
+                        await batchWriteLibrary(this.user.uid, localOnlyMap);
+                        console.log("LibraryService: Guest items successfully uploaded to cloud.");
+                    } catch (uploadError) {
+                        console.error("LibraryService: Failed to upload guest items to cloud", uploadError);
+                    }
+                }
 
                 // Hydrate missing items
                 if (itemsToHydrate.length > 0) {

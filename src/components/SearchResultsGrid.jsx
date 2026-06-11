@@ -2,8 +2,9 @@ import React from "react";
 import SearchResultCard from "./SearchResultCard";
 import { IMG_BASE } from "../utils/constants";
 import { getTMDBLink } from "../utils/tmdb";
+import MediaActionButtons from "./MediaActionButtons";
 
-export default function SearchResultsGrid({
+const SearchResultsGrid = React.memo(({
     results,
     isInWatchlist,
     isInWishlist,
@@ -11,7 +12,7 @@ export default function SearchResultsGrid({
     onAddWishlist,
     onOpenDetail,
     viewMode = "grid"
-}) {
+}) => {
     const fallback = "https://via.placeholder.com/300x450?text=No+Poster";
 
     if (viewMode === "list") {
@@ -43,42 +44,14 @@ export default function SearchResultsGrid({
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${inWatchlist
-                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                : "bg-blue-600 text-white hover:bg-blue-500 shadow-md active:scale-95"
-                                                }`}
-                                            disabled={inWatchlist}
-                                            onClick={() => !inWatchlist && onAddWatchlist(item)}
-                                        >
-                                            {inWatchlist ? (
-                                                <>
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    Watched
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="text-base font-bold">+</span> Watched
-                                                </>
-                                            )}
-                                        </button>
-
-                                        <button
-                                            className={`w-9 h-9 flex items-center justify-center rounded-lg border transition ${inWatchlist
-                                                ? "opacity-30 cursor-not-allowed bg-zinc-800 border-zinc-700 text-zinc-600"
-                                                : inWishlist
-                                                    ? "bg-red-900/20 border-red-800 text-red-500"
-                                                    : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"
-                                                }`}
-                                            disabled={inWatchlist}
-                                            onClick={() => !inWatchlist && onAddWishlist(item)}
-                                            title={inWatchlist ? "Already watched" : inWishlist ? "In Wishlist" : "Add to Wishlist"}
-                                        >
-                                            {inWishlist ? "♥" : "♡"}
-                                        </button>
+                                        <MediaActionButtons
+                                            item={item}
+                                            isInWatchlist={inWatchlist}
+                                            isInWishlist={inWishlist}
+                                            onAddToWatchlist={onAddWatchlist}
+                                            onAddToWishlist={onAddWishlist}
+                                            layout="list"
+                                        />
 
                                         <a
                                             href={getTMDBLink(item)}
@@ -89,7 +62,6 @@ export default function SearchResultsGrid({
                                             Open
                                         </a>
                                     </div>
-                                </div>
 
                                 <p className="text-sm text-zinc-500 line-clamp-2 mt-1 pr-4">
                                     {item.overview || "No description available."}
@@ -117,4 +89,6 @@ export default function SearchResultsGrid({
             ))}
         </div>
     );
-}
+});
+
+export default SearchResultsGrid;

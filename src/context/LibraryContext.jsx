@@ -30,14 +30,14 @@ export function LibraryProvider({ children }) {
         return map;
     }, [library]);
 
-    const value = {
+    const value = useMemo(() => ({
         library,
         setLibrary, // Needed by useLibraryActions
         loading,
         watched,
         wishlist,
         ratings
-    };
+    }), [library, setLibrary, loading, watched, wishlist, ratings]);
 
     return (
         <LibraryContext.Provider value={value}>

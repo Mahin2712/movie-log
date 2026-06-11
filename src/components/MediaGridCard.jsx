@@ -13,7 +13,7 @@ const MediaGridCard = memo(({
   isInWatchlist,
   isInWishlist,
   onOpenDetail,
-}) {
+}) => {
   const handleCardClick = (e) => {
     e.stopPropagation();
     onOpenDetail?.(item);
@@ -74,49 +74,17 @@ const MediaGridCard = memo(({
             {displayYear}
           </div>
 
-          <div className="mt-auto flex items-center gap-2">
-            <button
-              className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5
-                ${isInWatchlist 
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                  : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 active:scale-95"
-                }`}
-              disabled={isInWatchlist}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToWatchlist?.(item);
-              }}
-            >
-               {isInWatchlist ? (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Watched
-                </>
-              ) : (
-                <>
-                  <span className="text-sm">+</span> Watched
-                </>
-              )}
-            </button>
-
-            <button
-              className={`p-2 rounded-xl border transition-all active:scale-90
-                ${isInWishlist 
-                  ? "bg-rose-500/20 border-rose-500/30 text-rose-400" 
-                  : "bg-zinc-800/50 border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-700"
-                } ${isInWatchlist ? "opacity-30 pointer-events-none" : ""}`}
-              disabled={isInWishlist || isInWatchlist}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToWishlist?.(item);
-              }}
-            >
-              <svg className="w-4 h-4" fill={isInWishlist ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </button>
+          <div className="mt-auto">
+            {mode === "search" && (
+              <MediaActionButtons 
+                item={item}
+                isInWatchlist={isInWatchlist}
+                isInWishlist={isInWishlist}
+                onAddToWatchlist={onAddToWatchlist}
+                onAddToWishlist={onAddToWishlist}
+                layout="grid"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -124,7 +92,7 @@ const MediaGridCard = memo(({
   }
 
   // --- WISHLIST / WATCHLIST MODE (Detailed Grid Card) ---
-  const progressPercent = item.progress?.percentage || 0;
+  const progressPercent = item.progress?.percentComplete ?? item.progress?.percentage ?? 0;
   const progressRadius = 14;
   const progressCircumference = 2 * Math.PI * progressRadius;
   const progressOffset = progressCircumference - (progressPercent / 100) * progressCircumference;

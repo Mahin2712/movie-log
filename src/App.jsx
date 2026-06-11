@@ -28,7 +28,7 @@ import { TMDB_BASE } from "./utils/constants";
 
 function AppContent() {
     const { authUser } = useAuth();
-    const { library, watched, wishlist, ratings } = useLibrary();
+    const { library, watched, wishlist, ratings, setLibrary } = useLibrary();
     const actions = useLibraryActions();
     const { 
         search, setSearch, searchResults, isSearching, 
@@ -46,6 +46,7 @@ function AppContent() {
     const [activeTab, setActiveTab] = useState("all");
     const [viewMode, setViewMode] = useState(() => localStorage.getItem("movieApp_viewMode") || "list");
     const [showSettings, setShowSettings] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(() => Number(localStorage.getItem("movieApp_refreshMins") || "15"));
     const [selectedMedia, setSelectedMedia] = useState(null);
     const carouselRef = useRef(null);
 
@@ -53,6 +54,23 @@ function AppContent() {
     useEffect(() => {
         localStorage.setItem("movieApp_viewMode", viewMode);
     }, [viewMode]);
+
+    // Background auto-refresh sync
+    useEffect(() => {
+        if (!autoRefresh) return;
+        const intervalMs = autoRefresh * 60 * 1000;
+        const intervalId = setInterval(async () => {
+            console.log("Background auto-refresh syncing library...");
+            try {
+                const { libraryService } = await import("./sync/libraryService");
+                const lib = await libraryService.sync();
+                if (lib) setLibrary(lib);
+            } catch (err) {
+                console.error("Background sync failed", err);
+            }
+        }, intervalMs);
+        return () => clearInterval(intervalId);
+    }, [autoRefresh, setLibrary]);
 
     // Custom Event Listener for Tab Switching (from CTAs)
     useEffect(() => {
@@ -65,15 +83,31 @@ function AppContent() {
 
     // Helpers
     const isWatched = useCallback((itemOrId) => {
-        const id = typeof itemOrId === 'object' ? (itemOrId.tmdb_id || itemOrId.id) : itemOrId;
-        const result = watched.some(m => m.tmdb_id === id || m.id === id);
-        console.log(`isWatched check: ${id} -> ${result}`);
-        return result;
+        if (!itemOrId) return false;
+        // Case 1: Normalized ID or raw ID passed
+        if (typeof itemOrId === 'string' || typeof itemOrId === 'number') {
+            const sid = String(itemOrId);
+            return watched.some(m => String(m.id) === sid || String(m.tmdb_id) === sid);
+        }
+        // Case 2: Object from search result or list
+        const mediaType = itemOrId.media_type || (itemOrId.first_air_date ? "tv" : "movie");
+        const tmdbId = itemOrId.tmdb_id || itemOrId.id;
+        const normId = `${mediaType}_${tmdbId}`;
+        
+        return watched.some(m => m.id === normId || String(m.tmdb_id) === String(tmdbId));
     }, [watched]);
 
     const isWishlisted = useCallback((itemOrId) => {
-        const id = typeof itemOrId === 'object' ? (itemOrId.tmdb_id || itemOrId.id) : itemOrId;
-        return wishlist.some(m => m.tmdb_id === id || m.id === id);
+        if (!itemOrId) return false;
+        if (typeof itemOrId === 'string' || typeof itemOrId === 'number') {
+            const sid = String(itemOrId);
+            return wishlist.some(m => String(m.id) === sid || String(m.tmdb_id) === sid);
+        }
+        const mediaType = itemOrId.media_type || (itemOrId.first_air_date ? "tv" : "movie");
+        const tmdbId = itemOrId.tmdb_id || itemOrId.id;
+        const normId = `${mediaType}_${tmdbId}`;
+        
+        return wishlist.some(m => m.id === normId || String(m.tmdb_id) === String(tmdbId));
     }, [wishlist]);
     
     const scrollCarousel = (dir = "right") => {
@@ -85,6 +119,10 @@ function AppContent() {
     };
 
     const watchStats = React.useMemo(() => getWatchStats(watched), [watched]);
+    const filteredSearchResults = React.useMemo(() => 
+        searchResults.filter(item => searchFilter === "all" ? true : item.media_type === searchFilter),
+        [searchResults, searchFilter]
+    );
 
     return (
         <AppShell
@@ -122,10 +160,7 @@ function AppContent() {
                     
                     <SearchResultsGrid
                         viewMode={viewMode}
-                        results={React.useMemo(() => 
-                            searchResults.filter(item => searchFilter === "all" ? true : item.media_type === searchFilter),
-                            [searchResults, searchFilter]
-                        )}
+                        results={filteredSearchResults}
                         isInWatchlist={isWatched}
                         isInWishlist={isWishlisted}
                         onAddWatchlist={actions.addToWatchlist}
@@ -166,7 +201,7 @@ function AppContent() {
                                 watched={watched}
                                 genresMap={genresMap}
                                 ratings={ratings}
-                                onRemove={(item) => actions.removeFromLibrary(item.id)}
+                                onRemove={(item) => actions.removeFromLibrary(item?.id || item)}
                                 onSetRating={actions.setRating}
                                 onMoveToWishlist={(item) => actions.addToWishlist(item)}
                                 onSelect={setSelectedMedia}
@@ -180,7 +215,7 @@ function AppContent() {
                                 viewMode={viewMode}
                                 wishlist={wishlist}
                                 genresMap={genresMap}
-                                onRemove={(item) => actions.removeFromLibrary(item.id)}
+                                onRemove={(item) => actions.removeFromLibrary(item?.id || item)}
                                 onMoveToWatched={(item) => actions.addToWatchlist(item)}
                                 onSelect={setSelectedMedia}
                             />
@@ -198,15 +233,20 @@ function AppContent() {
             {/* Modals & Overlays */}
             {showSettings && (
                 <SettingsModal
-                    onImport={(file, onProgress) => 
-                        handleImportFile({ 
+                    autoRefresh={autoRefresh}
+                    setAutoRefresh={setAutoRefresh}
+                    onImport={async (file, onProgress) => {
+                        const newLib = await handleImportFile({ 
                             file, 
                             watched, 
                             wishlist, 
                             TMDB_BASE, 
                             onProgress 
-                        })
-                    }
+                        });
+                        if (newLib) {
+                            setLibrary(newLib);
+                        }
+                    }}
                     onExportWatched={() => exportWatched({ watched, ratings })}
                     onExportWishlist={() => exportWishlist({ wishlist })}
                     onClose={() => setShowSettings(false)}
