@@ -72,6 +72,44 @@ export const updateLocalItem = (item) => {
 };
 
 /**
+ * Merge TMDB metadata fields into an existing local item.
+ * Preserves status, rating, progress, dateAdded, and updatedAt.
+ * Does not write if item is deleted/missing.
+ */
+export const mergeLocalHydratedItem = (hydratedItem) => {
+    const library = readLocalLibrary();
+    const key = hydratedItem.id;
+
+    if (!library[key]) return null;
+
+    const existing = library[key];
+
+    library[key] = {
+        ...existing,
+        title: hydratedItem.title || existing.title,
+        original_title: hydratedItem.original_title || existing.original_title,
+        year: hydratedItem.year || existing.year,
+        poster_path: hydratedItem.poster_path !== undefined ? hydratedItem.poster_path : existing.poster_path,
+        backdrop_path: hydratedItem.backdrop_path !== undefined ? hydratedItem.backdrop_path : existing.backdrop_path,
+        genres: hydratedItem.genres || existing.genres || [],
+        genre_ids: hydratedItem.genre_ids || existing.genre_ids || [],
+        release_date: hydratedItem.release_date || existing.release_date,
+        first_air_date: hydratedItem.first_air_date || existing.first_air_date,
+        last_air_date: hydratedItem.last_air_date || existing.last_air_date,
+        in_production: hydratedItem.in_production !== undefined ? hydratedItem.in_production : existing.in_production,
+        overview: hydratedItem.overview || existing.overview,
+        number_of_episodes: hydratedItem.number_of_episodes || existing.number_of_episodes,
+        number_of_seasons: hydratedItem.number_of_seasons || existing.number_of_seasons,
+        seasonList: hydratedItem.seasonList || existing.seasonList,
+        production_status: hydratedItem.production_status || existing.production_status,
+        _hydrationStatus: hydratedItem._hydrationStatus
+    };
+
+    writeLocalLibrary(library);
+    return library[key];
+};
+
+/**
  * Remove an item from the local library
  */
 export const removeLocalItem = (mediaType, tmdbId) => {

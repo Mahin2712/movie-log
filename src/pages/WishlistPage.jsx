@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import FilterBar from "../components/FilterBar";
 import MediaCard from "../components/MediaCard";
 import MediaGridCard from "../components/MediaGridCard";
+import { CardSkeleton, ListRowSkeleton } from "../components/Skeleton";
 
 const LIST_PAGE_SIZE = 12;
 const GRID_PAGE_SIZE = 24; // Double the list size
@@ -59,11 +60,11 @@ export default function WishlistPage({
         break;
 
       case "az":
-        list.sort((a, b) => a.title.localeCompare(b.title));
+        list.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
         break;
 
       case "za":
-        list.sort((a, b) => b.title.localeCompare(a.title));
+        list.sort((a, b) => (b.title || "").localeCompare(a.title || ""));
         break;
 
       default: // newest
@@ -152,6 +153,10 @@ export default function WishlistPage({
         viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-6">
           {pagedWishlist.map((item) => {
+            const isHydrated = Boolean(item.title && item.poster_path !== undefined);
+            if (!isHydrated) {
+              return <CardSkeleton key={item.id} />;
+            }
             const daysAgo = item.dateAdded
               ? Math.floor((Date.now() - new Date(item.dateAdded)) / 86400000)
               : null;
@@ -169,16 +174,22 @@ export default function WishlistPage({
           })}
         </div>
       ) : (
-        pagedWishlist.map((item) => (
-          <MediaCard
-            key={item.id}
-            item={item}
-            status="wishlist"
-            genresMap={genresMap}
-            onWatch={onMoveToWatched}
-            onRemove={onRemove}
-          />
-        ))
+        pagedWishlist.map((item) => {
+          const isHydrated = Boolean(item.title && item.poster_path !== undefined);
+          if (!isHydrated) {
+            return <ListRowSkeleton key={item.id} />;
+          }
+          return (
+            <MediaCard
+              key={item.id}
+              item={item}
+              status="wishlist"
+              genresMap={genresMap}
+              onWatch={onMoveToWatched}
+              onRemove={onRemove}
+            />
+          );
+        })
       ))}
 
       {/* 📄 Pagination */}

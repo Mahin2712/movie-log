@@ -25,11 +25,119 @@ class LibraryService {
         this.user = null;
         this.userMeta = null;
         this.status = 'idle'; // idle, syncing, migration_required, error
+        this.hydrationListeners = new Set();
+        this.hydrationQueue = [];
+        this.queuedKeys = new Set();
+        this.isHydrating = false;
+        this.hydrationRunId = 0;
     }
 
     setUser(user, userMeta) {
         this.user = user;
         this.userMeta = userMeta;
+        this.hydrationRunId++;
+        this.hydrationQueue = [];
+        this.queuedKeys.clear();
+        this.isHydrating = false;
+    }
+
+    registerHydrationListener(listener) {
+        this.hydrationListeners.add(listener);
+        return () => this.hydrationListeners.delete(listener);
+    }
+
+    notifyHydration(item) {
+        this.hydrationListeners.forEach(listener => {
+            try {
+                listener(item);
+            } catch (err) {
+                console.error("LibraryService: Error in listener:", err);
+            }
+        });
+    }
+
+    startBackgroundHydration(items, runId = this.hydrationRunId) {
+        if (!items || items.length === 0) return;
+
+        items.forEach(item => {
+            const key = item.id || `${item.media_type}_${item.tmdb_id}`;
+            if (!this.queuedKeys.has(key)) {
+                this.queuedKeys.add(key);
+                this.hydrationQueue.push(item);
+            }
+        });
+
+        if (this.isHydrating) return;
+        this.isHydrating = true;
+        this.processHydrationQueue(runId);
+    }
+
+    async processHydrationQueue(runId) {
+        if (runId !== this.hydrationRunId) {
+            console.log(`LibraryService: Queue run ID ${runId} is stale (active: ${this.hydrationRunId}). Stopping worker.`);
+            this.isHydrating = false;
+            return;
+        }
+
+        if (this.hydrationQueue.length === 0) {
+            this.isHydrating = false;
+            this.queuedKeys.clear();
+            return;
+        }
+
+        const item = this.hydrationQueue.shift();
+        const key = item.id || `${item.media_type}_${item.tmdb_id}`;
+
+        try {
+            const { readLocalLibrary, mergeLocalHydratedItem } = await import("../storage/localStore");
+            const currentLocal = readLocalLibrary();
+            
+            // Confirm the item still exists locally before querying TMDB
+            if (!currentLocal[key]) {
+                console.log(`LibraryService: Item ${key} was deleted during queue. Skipping TMDB fetch.`);
+                this.processHydrationQueue(runId);
+                return;
+            }
+
+            const { fetchTMDBDetails, tmdbToMediaItem } = await import("../services/tmdbService");
+            const result = await fetchTMDBDetails(item.tmdb_id, item.media_type);
+
+            if (runId !== this.hydrationRunId) {
+                this.isHydrating = false;
+                return;
+            }
+
+            // Confirm it still exists locally after network call
+            if (!readLocalLibrary()[key]) {
+                console.log(`LibraryService: Item ${key} was deleted during TMDB network fetch. Skipping merge.`);
+                this.processHydrationQueue(runId);
+                return;
+            }
+
+            if (result.success) {
+                const hydrated = tmdbToMediaItem(result.data, item.media_type, item);
+                const merged = mergeLocalHydratedItem(hydrated);
+                if (merged) {
+                    this.notifyHydration(merged);
+                }
+            } else {
+                console.warn(`LibraryService: Background hydration failed for ${key}: ${result.error}`);
+                const partial = {
+                    ...item,
+                    title: item.title || `Untitled (${item.tmdb_id})`,
+                    year: item.year || null,
+                    _hydrationStatus: "failed"
+                };
+                const merged = mergeLocalHydratedItem(partial);
+                if (merged) {
+                    this.notifyHydration(merged);
+                }
+            }
+        } catch (error) {
+            console.error(`LibraryService: Error in background hydration for ${key}`, error);
+        }
+
+        setTimeout(() => this.processHydrationQueue(runId), 150);
     }
 
     /**
@@ -165,6 +273,13 @@ class LibraryService {
                 });
                 writeLocalLibrary(library);
             }
+
+            // Start background hydration for guest missing metadata
+            const needsHydration = Object.values(library).filter(i => !i.title || i.poster_path === undefined);
+            if (needsHydration.length > 0) {
+                console.log(`LibraryService: Guest background hydrating ${needsHydration.length} items.`);
+                this.startBackgroundHydration(needsHydration);
+            }
         } else {
             // Logged in flow
             try {
@@ -234,33 +349,19 @@ class LibraryService {
                     }
                 }
 
-                // Hydrate missing items
-                if (itemsToHydrate.length > 0) {
-                    console.log(`LibraryService: Hydrating ${itemsToHydrate.length} new/missing items.`);
-                    const newlyHydrated = await hydrateLibrary(itemsToHydrate);
-                    newlyHydrated.forEach(item => {
-                        mergedLibrary[item.id] = item;
-                    });
-                }
-
                 library = mergedLibrary;
-                // Cache FULL hydrated library to local
+                // Cache library immediately
                 writeLocalLibrary(library);
+
+                // Start background hydration for cloud items missing metadata
+                if (itemsToHydrate.length > 0) {
+                    console.log(`LibraryService: Background hydrating ${itemsToHydrate.length} items.`);
+                    this.startBackgroundHydration(itemsToHydrate);
+                }
 
             } catch (error) {
                 console.error("LibraryService: Error loading cloud library, falling back to local cache", error);
                 library = readLocalLibrary();
-            }
-        }
-
-        // Final check: if we are loading local (guest or fallback), ensure it's hydrated
-        if (!this.user) {
-            const items = Object.values(library);
-            const needsHydration = items.filter(i => !i.title);
-            if (needsHydration.length > 0) {
-                const freshHydrated = await hydrateLibrary(needsHydration);
-                freshHydrated.forEach(item => { library[item.id] = item; });
-                writeLocalLibrary(library);
             }
         }
 
@@ -300,18 +401,35 @@ class LibraryService {
 
                 if (Object.keys(delta).length > 0) {
                     console.log(`LibraryService: Found ${Object.keys(delta).length} remote updates.`);
-                    const deltaItems = Object.values(delta);
-                    const hydratedDeltas = await hydrateLibrary(deltaItems);
-
+                    
                     const currentLocal = readLocalLibrary();
                     const newLocal = { ...currentLocal };
+                    const itemsToHydrate = [];
 
-                    hydratedDeltas.forEach(item => {
-                        newLocal[item.id] = item;
+                    Object.keys(delta).forEach(key => {
+                        const deltaItem = delta[key];
+                        const isDeleted = deltaItem.deleted === true;
+
+                        if (isDeleted) {
+                            delete newLocal[key];
+                        } else {
+                            const existing = newLocal[key];
+                            if (existing && existing.title && existing.poster_path !== undefined) {
+                                newLocal[key] = { ...existing, ...deltaItem };
+                            } else {
+                                newLocal[key] = deltaItem;
+                                itemsToHydrate.push(deltaItem);
+                            }
+                        }
                     });
 
                     writeLocalLibrary(newLocal);
                     localStorage.setItem(`lastSyncAt_${this.user.uid}`, new Date().toISOString());
+
+                    if (itemsToHydrate.length > 0) {
+                        console.log(`LibraryService: Incremental background hydrating ${itemsToHydrate.length} items.`);
+                        this.startBackgroundHydration(itemsToHydrate);
+                    }
 
                     return newLocal;
                 } else {
@@ -324,7 +442,7 @@ class LibraryService {
             }
         }
 
-        // Full Sync (Fetch Cloud -> Hydrate)
+        // Full Sync (Fetch Cloud -> Hydrate in background)
         const lib = await this.loadLibrary();
         localStorage.setItem(`lastSyncAt_${this.user.uid}`, new Date().toISOString());
         console.log("%cLibraryService: Full sync complete.", "color: #10b981; font-weight: bold;");

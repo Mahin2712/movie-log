@@ -15,6 +15,15 @@ export function useSync() {
     useEffect(() => {
         if (authLoading) return;
 
+        let isActive = true;
+
+        // Subscribe to background hydration updates
+        const unsubscribeHydration = libraryService.registerHydrationListener((hydratedItem) => {
+            if (isActive) {
+                setLibrary(prev => ({ ...prev, [hydratedItem.id]: hydratedItem }));
+            }
+        });
+
         const initLibrary = async () => {
             // Update service with current user
             libraryService.setUser(authUser);
@@ -22,30 +31,32 @@ export function useSync() {
             // 1. Instant Bootstrap from Local Cache
             const { readLocalLibrary } = await import("../storage/localStore");
             const local = readLocalLibrary();
-            if (Object.keys(local).length > 0) {
+            if (Object.keys(local).length > 0 && isActive) {
                 setLibrary(local);
             }
 
-            // 2. Determine if we should show "Blocking" loader
-            // We block ONLY on first login (no sync timestamp)
-            const lastSyncAt = localStorage.getItem(`lastSyncAt_${authUser?.uid}`);
-            const isFirstLogin = authUser && !lastSyncAt;
-
-            if (isFirstLogin) {
-                setLoading(true);
-            }
+            setLoading(true);
 
             try {
                 const lib = await libraryService.sync();
-                setLibrary(lib || {});
+                if (isActive) {
+                    setLibrary(lib || {});
+                }
             } catch (error) {
                 console.error("Library sync failed:", error);
             } finally {
-                setLoading(false);
+                if (isActive) {
+                    setLoading(false);
+                }
             }
         };
 
         initLibrary();
+
+        return () => {
+            isActive = false;
+            unsubscribeHydration();
+        };
     }, [authUser, authLoading]);
 
     return { library, setLibrary, loading };

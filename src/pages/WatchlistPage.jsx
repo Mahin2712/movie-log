@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import FilterBar from "../components/FilterBar";
 import MediaGridCard from "../components/MediaGridCard";
 import WatchedRow from "../components/WatchedRowV2";
+import { CardSkeleton, ListRowSkeleton } from "../components/Skeleton";
 
 const LIST_PAGE_SIZE = 15;
 const GRID_PAGE_SIZE = 30; // Double the list size
@@ -61,9 +62,11 @@ export default function WatchlistPage({
       }
 
       if (sortBy === "title") {
+        const titleA = a.title || "";
+        const titleB = b.title || "";
         return asc
-          ? a.title.localeCompare(b.title)
-          : b.title.localeCompare(a.title);
+          ? titleA.localeCompare(titleB)
+          : titleB.localeCompare(titleA);
       }
 
       // default: dateAdded
@@ -153,6 +156,10 @@ export default function WatchlistPage({
         viewMode === "grid" ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] sm:gap-6">
           {paginatedWatched.map((item) => {
+            const isHydrated = Boolean(item.title && item.poster_path !== undefined);
+            if (!isHydrated) {
+              return <CardSkeleton key={`${item.id}-${item.media_type}`} />;
+            }
             const daysAgo = item.dateAdded
               ? Math.floor((Date.now() - new Date(item.dateAdded)) / 86400000)
               : null;
@@ -173,18 +180,24 @@ export default function WatchlistPage({
         </div>
       ) : (
         <>
-          {paginatedWatched.map((item) => (
-            <WatchedRow
-              key={item.id}
-              item={item}
-              rating={ratings[item.id]}
-              genresMap={genresMap}
-              onSetRating={(value) => onSetRating(item.id, value)}
-              onRemove={onRemove}
-              onMoveToWishlist={() => onMoveToWishlist(item)}
-              onSelect={() => onSelect?.(item)}
-            />
-          ))}
+          {paginatedWatched.map((item) => {
+            const isHydrated = Boolean(item.title && item.poster_path !== undefined);
+            if (!isHydrated) {
+              return <ListRowSkeleton key={item.id} />;
+            }
+            return (
+              <WatchedRow
+                key={item.id}
+                item={item}
+                rating={ratings[item.id]}
+                genresMap={genresMap}
+                onSetRating={(value) => onSetRating(item.id, value)}
+                onRemove={onRemove}
+                onMoveToWishlist={() => onMoveToWishlist(item)}
+                onSelect={() => onSelect?.(item)}
+              />
+            );
+          })}
         </>
       ))}
 
