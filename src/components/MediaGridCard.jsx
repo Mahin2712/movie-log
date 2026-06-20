@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { IMG_BASE } from "../utils/constants";
+import MediaActionButtons from "./MediaActionButtons";
 
 const MediaGridCard = memo(({
   item,

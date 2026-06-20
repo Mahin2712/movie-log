@@ -124,6 +124,15 @@ function AppContent() {
         [searchResults, searchFilter]
     );
 
+    const selectedMediaWithLibraryState = React.useMemo(() => {
+        if (!selectedMedia) return null;
+        const mediaType = selectedMedia.media_type || (selectedMedia.first_air_date ? "tv" : "movie");
+        const tmdbId = selectedMedia.tmdb_id || selectedMedia.id;
+        const normId = `${mediaType}_${tmdbId}`;
+        const libraryItem = library[normId] || library[tmdbId];
+        return libraryItem ? { ...selectedMedia, ...libraryItem } : selectedMedia;
+    }, [selectedMedia, library]);
+
     return (
         <AppShell
             activeTab={activeTab}
@@ -255,7 +264,7 @@ function AppContent() {
 
             {selectedMedia && (
                 <ShowDetailPage
-                    show={selectedMedia}
+                    show={selectedMediaWithLibraryState}
                     onClose={() => setSelectedMedia(null)}
                     onUpdateShow={actions.updateItem}
                 />

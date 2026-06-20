@@ -39,7 +39,7 @@ const SearchResultsGrid = React.memo(({
                                     <div>
                                         <h3 className="text-lg font-bold text-white">{item.title}</h3>
                                         <div className="text-sm text-zinc-400">
-                                            {item.year || "Unknown"}
+                                            {item.year || item.release_date?.slice(0, 4) || "Unknown"}
                                             {item.media_type && <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-zinc-800 border border-zinc-700">{item.media_type === "tv" ? "TV" : "Movie"}</span>}
                                         </div>
                                     </div>
