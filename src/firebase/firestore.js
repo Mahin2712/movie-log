@@ -1,21 +1,25 @@
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
+import { app } from "./firebase";
 
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+let db = null;
 
-const app = initializeApp(firebaseConfig);
-export const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-    })
-});
+if (app) {
+    try {
+        db = initializeFirestore(app, {
+            localCache: persistentLocalCache({
+                tabManager: persistentMultipleTabManager()
+            })
+        });
+    } catch (error) {
+        console.warn("Firestore initialization failed:", error);
+    }
+}
+
+export { db };
 export async function ensureUserDocument(authUser) {
-    if (!authUser || !authUser.uid) return;
+    if (!db || !authUser || !authUser.uid) return null;
+
+    try {
 
     const userRef = doc(db, "users", authUser.uid);
     const snap = await getDoc(userRef);
@@ -40,7 +44,10 @@ export async function ensureUserDocument(authUser) {
         await updateDoc(userRef, {
             "meta.lastLogin": serverTimestamp(),
         });
-        return snap.data();
+    }
+    } catch (err) {
+        console.warn("ensureUserDocument failed:", err);
+        return null;
     }
 }
 

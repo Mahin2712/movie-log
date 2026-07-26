@@ -16,7 +16,7 @@ import { sanitizeForFirestore } from "./sanitizers";
  * Reads the deletedItems tombstone map
  */
 export const readDeletedItems = async (uid) => {
-    if (!uid) return {};
+    if (!db || !uid) return {};
     try {
         const metaRef = doc(db, "users", uid, "meta", "general");
         const snapshot = await (await import("firebase/firestore")).getDoc(metaRef);
@@ -37,7 +37,7 @@ export const readDeletedItems = async (uid) => {
  * @returns {Promise<Object>} Map of mediaKey -> item
  */
 export const readUserLibrary = async (uid) => {
-    if (!uid) return {};
+    if (!db || !uid) return {};
 
     try {
         const libraryRef = collection(db, "users", uid, "library");
@@ -63,7 +63,7 @@ export const readUserLibrary = async (uid) => {
  * @param {Object} item - The item to write
  */
 export const writeLibraryItem = async (uid, item) => {
-    if (!uid || !item) return;
+    if (!db || !uid || !item) return;
 
     const key = getMediaKey(item.media_type, item.tmdb_id);
     const itemRef = doc(db, "users", uid, "library", key);
@@ -94,7 +94,7 @@ export const writeLibraryItem = async (uid, item) => {
  * @param {Object} item - The item to delete (needs tmdb_id and media_type)
  */
 export const deleteLibraryItem = async (uid, item) => {
-    if (!uid || !item) return;
+    if (!db || !uid || !item) return;
 
     const key = getMediaKey(item.media_type, item.tmdb_id);
     const itemRef = doc(db, "users", uid, "library", key);
@@ -132,7 +132,7 @@ export const deleteLibraryItem = async (uid, item) => {
  * @returns {Promise<Object>} Map of mediaKey -> item
  */
 export const readUserLibrarySince = async (uid, since) => {
-    if (!uid) return {};
+    if (!db || !uid) return {};
 
     try {
         const libraryRef = collection(db, "users", uid, "library");
@@ -169,7 +169,7 @@ export const readUserLibrarySince = async (uid, since) => {
  * @param {Object} itemsMap - Map of mediaKey -> item
  */
 export const batchWriteLibrary = async (uid, itemsMap) => {
-    if (!uid || Object.keys(itemsMap).length === 0) return;
+    if (!db || !uid || Object.keys(itemsMap).length === 0) return;
 
     try {
         const batch = writeBatch(db);

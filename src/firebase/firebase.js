@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -8,6 +8,18 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+let app = null;
+let auth = null;
 
-export const auth = getAuth(app);
+if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined") {
+    try {
+        app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+        auth = getAuth(app);
+    } catch (error) {
+        console.warn("Firebase Auth initialization failed:", error);
+    }
+} else {
+    console.warn("Firebase API key missing in environment variables. Running in Guest mode.");
+}
+
+export { app, auth };

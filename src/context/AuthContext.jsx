@@ -16,6 +16,14 @@ export function AuthProvider({ children }) {
     const [authLoading, setAuthLoading] = useState(true);
 
     useEffect(() => {
+        if (!auth) {
+            console.warn("Firebase Auth unavailable. Running in Guest mode.");
+            setAuthUser(null);
+            libraryService.setUser(null, null);
+            setAuthLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
