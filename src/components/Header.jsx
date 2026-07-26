@@ -51,7 +51,7 @@ export default function Header({
           </div>
           <input
             className="w-full pl-10 pr-10 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700/50 focus:bg-zinc-800 focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none text-sm placeholder:text-zinc-500"
-            placeholder="Search your collection..."
+            placeholder="Search movies & TV shows..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

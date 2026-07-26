@@ -130,6 +130,7 @@ export default function WishlistPage({
       // Or just map the dropdown options. 
       // The FilterBar has `asc` prop. 
       // I will pass `null` for setAsc to FilterBar and inside FilterBar conditionally render the button if `setAsc` is provided.
+        placeholder="Search wishlist..."
       />
 
       {/* 📌 Wishlist items: grid or list */}
